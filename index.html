@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบยืม-คืนเครื่องมือ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F7F7;
+    --surface:#FFFFFF;
+    --ink:#1F2933;
+    --ink-muted:#64748B;
+    --border:#E2E8F0;
+    --accent:#0F766E;
+    --accent-dark:#0B5C56;
+    --accent-soft:#E6F5F3;
+    --amber:#B45309; --amber-soft:#FEF3C7;
+    --red:#B91C1C; --red-soft:#FEE2E2;
+    --slate:#475569; --slate-soft:#E2E8F0;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans Thai',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  header{
+    position:sticky; top:0; z-index:20;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:14px 20px; display:flex; align-items:center; gap:12px;
+  }
+  header img{height:36px; width:36px; object-fit:contain; border-radius:8px;}
+  header .logo-fallback{
+    height:36px; width:36px; border-radius:8px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;
+  }
+  header h1{font-size:16px; margin:0; font-weight:700; line-height:1.3;}
+  header .sub{font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;}
+
+  nav{
+    display:flex; gap:6px; padding:10px 16px; background:var(--surface);
+    border-bottom:1px solid var(--border); position:sticky; top:65px; z-index:19;
+    overflow-x:auto;
+  }
+  nav button{
+    border:none; background:transparent; padding:9px 14px; border-radius:999px;
+    font-family:inherit; font-size:13.5px; font-weight:600; color:var(--ink-muted);
+    cursor:pointer; white-space:nowrap; transition:.15s;
+  }
+  nav button.active{background:var(--accent); color:#fff;}
+  nav button:not(.active):hover{background:var(--bg);}
+
+  main{max-width:720px; margin:0 auto; padding:20px 16px 60px;}
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; margin-bottom:14px;
+  }
+  h2{font-size:15px; margin:0 0 14px; font-weight:700;}
+  label{display:block; font-size:13px; font-weight:600; margin:14px 0 6px; color:var(--ink);}
+  label .req{color:var(--red); margin-left:2px;}
+  input, select, textarea{
+    width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px;
+    font-family:inherit; font-size:14px; background:#FCFDFD; color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+  .hint{font-size:11.5px; color:var(--ink-muted); margin-top:4px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media(max-width:480px){.row2{grid-template-columns:1fr;}}
+
+  .photo-drop{
+    margin-top:8px; border:1.5px dashed var(--border); border-radius:12px; padding:16px;
+    text-align:center; cursor:pointer; background:#FCFDFD;
+  }
+  .photo-drop:hover{border-color:var(--accent);}
+  .photo-drop img{max-width:100%; max-height:220px; border-radius:8px; margin-top:8px;}
+  .photo-drop .ph{color:var(--ink-muted); font-size:13px;}
+
+  button.primary{
+    width:100%; margin-top:18px; padding:13px; border:none; border-radius:10px;
+    background:var(--accent); color:#fff; font-family:inherit; font-weight:700; font-size:14.5px;
+    cursor:pointer; transition:.15s;
+  }
+  button.primary:hover{background:var(--accent-dark);}
+  button.primary:disabled{background:#B8C4C2; cursor:not-allowed;}
+  button.ghost{
+    padding:8px 12px; border:1px solid var(--border); background:#fff; border-radius:8px;
+    font-family:inherit; font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer;
+  }
+  button.ghost:hover{border-color:var(--accent); color:var(--accent);}
+  button.danger{color:var(--red); border-color:var(--red-soft);}
+  button.danger:hover{border-color:var(--red); background:var(--red-soft);}
+
+  .searchbar{display:flex; gap:8px; margin-bottom:12px;}
+  .chips{display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px;}
+  .chip{
+    padding:7px 12px; border-radius:999px; border:1px solid var(--border); font-size:12.5px;
+    font-weight:600; white-space:nowrap; cursor:pointer; background:#fff; color:var(--ink-muted);
+  }
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  .ticket{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; margin-bottom:12px; position:relative; border-left:4px solid var(--border);
+  }
+  .ticket.overdue{border-left-color:var(--red);}
+  .ticket.st-รออนุมัติ{border-left-color:var(--amber);}
+  .ticket.st-อนุมัติแล้ว{border-left-color:var(--accent);}
+  .ticket.st-ปฏิเสธ{border-left-color:var(--red);}
+  .ticket.st-คืนแล้ว{border-left-color:var(--slate);}
+  .ticket .id{font-size:10.5px; color:var(--ink-muted);}
+  .ticket .toolname{font-weight:700; font-size:14.5px; margin:2px 0 6px;}
+  .ticket .meta{font-size:12.5px; color:var(--ink-muted); line-height:1.7;}
+  .badge{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px;
+  }
+  .badge.รออนุมัติ{background:var(--amber-soft); color:var(--amber);}
+  .badge.อนุมัติแล้ว{background:var(--accent-soft); color:var(--accent);}
+  .badge.ปฏิเสธ{background:var(--red-soft); color:var(--red);}
+  .badge.คืนแล้ว{background:var(--slate-soft); color:var(--slate);}
+  .badge.overdue{background:var(--red-soft); color:var(--red); margin-left:6px;}
+  .ticket .thumb{width:100%; max-height:150px; object-fit:cover; border-radius:8px; margin-top:8px; cursor:pointer;}
+  .ticket .actions{display:flex; gap:8px; margin-top:10px;}
+  .empty{text-align:center; padding:40px 10px; color:var(--ink-muted); font-size:13.5px;}
+
+  .pin-box{max-width:280px; margin:40px auto; text-align:center;}
+  .pin-box input{text-align:center; letter-spacing:6px; font-size:20px;}
+
+  .listitem{display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+  .listitem:last-child{border-bottom:none;}
+
+  .modal-bg{position:fixed; inset:0; background:rgba(31,41,51,.45); display:flex; align-items:flex-end; justify-content:center; z-index:50;}
+  @media(min-width:600px){.modal-bg{align-items:center;}}
+  .modal{background:#fff; border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:480px; max-height:85vh; overflow-y:auto;}
+  @media(min-width:600px){.modal{border-radius:16px;}}
+  .modal h3{margin:0 0 12px; font-size:15px;}
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+    padding:11px 20px; border-radius:999px; font-size:13px; z-index:100; opacity:0; transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+  .lightbox{position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:60;}
+  .lightbox img{max-width:92%; max-height:88%; border-radius:8px;}
+  .tag-input-row{display:flex; gap:8px; margin-top:10px;}
+  .tag-input-row input{flex:1;}
+  .settings-preview{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .settings-preview img{height:44px; width:44px; object-fit:contain; border-radius:8px; border:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<header>
+  <div id="logoWrap"><div class="logo-fallback" id="logoFallback">?</div></div>
+  <div>
+    <h1 id="siteTitle">ระบบยืม-คืนเครื่องมือ</h1>
+    <div class="sub">THAIEEI · Equipment Loan Log</div>
+  </div>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="form">ยื่นคำขอยืม</button>
+  <button class="tab-btn" data-tab="status">สถานะการยืม</button>
+  <button class="tab-btn" data-tab="admin">ผู้ดูแลระบบ</button>
+</nav>
+
+<main>
+
+  <!-- ===== TAB: FORM ===== -->
+  <section id="tab-form">
+    <div class="card">
+      <h2>แบบฟอร์มขอยืมเครื่องมือ/อุปกรณ์</h2>
+      <form id="requestForm">
+        <label>ชื่อผู้ยืม<span class="req">*</span></label>
+        <input type="text" id="f_name" required placeholder="ชื่อ-นามสกุล">
+
+        <label>แผนก/กลุ่ม<span class="req">*</span></label>
+        <select id="f_department" required></select>
+
+        <label>เครื่องมือที่ต้องการยืม<span class="req">*</span></label>
+        <select id="f_toolSelect" required></select>
+        <input type="text" id="f_toolCustom" placeholder="พิมพ์ชื่อเครื่องมือ" style="display:none; margin-top:8px;">
+
+        <div class="row2">
+          <div>
+            <label>วันเวลาที่ยืม<span class="req">*</span></label>
+            <input type="datetime-local" id="f_borrow" required>
+          </div>
+          <div>
+            <label>วันเวลาที่คาดว่าจะคืน<span class="req">*</span></label>
+            <input type="datetime-local" id="f_return" required>
+          </div>
+        </div>
+
+        <label>รูปถ่ายหลักฐาน (สภาพเครื่องมือก่อนยืม)<span class="req">*</span></label>
+        <div class="photo-drop" id="photoDrop">
+          <div id="photoPreviewArea"><span class="ph">แตะเพื่อถ่ายรูป/แนบรูป</span></div>
+          <input type="file" accept="image/*" capture="environment" id="f_photo" style="display:none;">
+        </div>
+
+        <label>หมายเหตุ (ถ้ามี)</label>
+        <textarea id="f_note" rows="2" placeholder="รายละเอียดเพิ่มเติม"></textarea>
+
+        <button type="submit" class="primary" id="submitBtn">ส่งคำขอยืม</button>
+        <div class="hint" style="margin-top:8px;">คำขอจะถูกส่งไปให้ผู้ดูแลระบบตรวจสอบและอนุมัติก่อน จึงจะถือว่ายืมได้จริง</div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== TAB: STATUS ===== -->
+  <section id="tab-status" style="display:none;">
+    <div class="searchbar">
+      <input type="text" id="searchBox" placeholder="ค้นหาชื่อ / แผนก / เครื่องมือ">
+      <button class="ghost" onclick="loadRequests()">รีเฟรช</button>
+    </div>
+    <div class="chips" id="statusChips"></div>
+    <div id="ticketList"></div>
+  </section>
+
+  <!-- ===== TAB: ADMIN ===== -->
+  <section id="tab-admin" style="display:none;">
+    <div id="pinGate" class="pin-box card">
+      <h2 style="text-align:center;">เข้าสู่โหมดผู้ดูแลระบบ</h2>
+      <input type="password" id="pinInput" inputmode="numeric" placeholder="••••" maxlength="8">
+      <button class="primary" onclick="checkPin()">ยืนยันรหัส</button>
+      <div class="hint" id="pinError" style="color:var(--red);"></div>
+    </div>
+
+    <div id="adminPanel" style="display:none;">
+      <div class="card">
+        <h2>รายการรออนุมัติ</h2>
+        <div id="pendingList"></div>
+      </div>
+
+      <div class="card">
+        <h2>รายงานสรุปผู้ยืม</h2>
+        <div id="summaryReport"></div>
+        <button class="ghost" style="width:100%; margin-top:10px;" onclick="exportCSV()">ส่งออกรายงานทั้งหมดเป็น CSV (เปิดใน Excel ได้)</button>
+      </div>
+
+      <div class="card">
+        <h2>จัดการรายการเครื่องมือ</h2>
+        <div class="hint" style="margin-bottom:8px;">กดไอคอน QR เพื่อพิมพ์ติดไว้ที่ตัวเครื่องมือ สแกนแล้วเปิดฟอร์มพร้อมเลือกเครื่องมือนั้นให้อัตโนมัติ</div>
+        <div id="toolList"></div>
+        <div class="tag-input-row">
+          <input type="text" id="newTool" placeholder="เพิ่มชื่อเครื่องมือใหม่">
+          <button class="ghost" onclick="addTool()">เพิ่ม</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>จัดการแผนก/กลุ่ม</h2>
+        <div id="deptList"></div>
+        <div class="tag-input-row">
+          <input type="text" id="newDept" placeholder="เพิ่มแผนก/กลุ่มใหม่">
+          <button class="ghost" onclick="addDept()">เพิ่ม</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>ตั้งค่าเว็บไซต์</h2>
+        <label>ชื่อเว็บไซต์ / หน่วยงาน</label>
+        <input type="text" id="set_siteName">
+        <label>โลโก้</label>
+        <div class="settings-preview">
+          <img id="logoPreview" style="display:none;">
+          <span class="hint" id="logoHint">ยังไม่มีโลโก้</span>
+        </div>
+        <input type="file" accept="image/*" id="set_logo">
+        <label>อีเมลผู้ดูแล (รับแจ้งเตือนคำขอใหม่ / ใกล้-เกินกำหนดคืน)</label>
+        <input type="email" id="set_adminEmail" placeholder="admin@example.com">
+        <div class="hint">เว้นว่างได้ถ้าไม่ต้องการรับอีเมลแจ้งเตือน</div>
+
+        <label>LINE Channel Access Token (แจ้งเตือนผ่าน LINE OA)</label>
+        <input type="password" id="set_lineToken" placeholder="วาง Channel access token ที่นี่">
+        <div class="hint" id="lineStatusHint">ยังไม่ได้ตั้งค่า</div>
+        <div class="hint">
+          วิธีได้ token: สร้าง LINE Official Account ฟรีที่ <span class="mono">manager.line.biz</span> แล้วเปิดใช้ Messaging API
+          ในเมนู การตั้งค่า &gt; Messaging API จากนั้นกด Issue ที่ช่อง "Channel access token" แล้วคัดลอกมาวางที่นี่
+          สุดท้ายให้ผู้ดูแลทุกคนสแกน QR ของ OA นั้นเพื่อแอดเป็นเพื่อนไว้ก่อน จึงจะได้รับข้อความแจ้งเตือน (LINE Notify เดิมปิดให้บริการไปแล้ว จึงต้องใช้วิธีนี้แทน)
+        </div>
+        <button class="ghost" style="width:100%; margin-top:8px;" onclick="saveSettingsThenTest()">บันทึกแล้วส่งข้อความทดสอบ</button>
+
+        <button class="primary" id="saveSettingsBtn" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+      </div>
+
+      <button class="ghost" style="width:100%;" onclick="logoutAdmin()">ออกจากโหมดผู้ดูแลระบบ</button>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ========= CONFIG =========
+   วางลิงก์ Web app ที่ได้จาก Deploy ของ Google Apps Script ตรงนี้
+*/
+const API_URL = 'https://script.google.com/macros/s/AKfycbwFgDYWT8x4_qET-suglcjSyG15ONt3Bz7ntIzjtzYoF5BA4yvLl2kg9cGlxJWdeNA/exec';
+const REQUESTS_CACHE_MS = 20000; // ไม่โหลดข้อมูลซ้ำถ้าเพิ่งโหลดไปไม่เกิน 20 วิ ทำให้สลับแท็บไปมาไวขึ้น
+
+let STATE = { settings:{}, tools:[], departments:[], requests:[], statusFilter:'ทั้งหมด', requestsLoadedAt:0 };
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+async function apiGet(action, params={}){
+  const usp = new URLSearchParams({action, ...params});
+  const res = await fetch(`${API_URL}?${usp.toString()}`);
+  return res.json();
+}
+async function apiPost(action, payload={}){
+  const res = await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action, ...payload})
+  });
+  return res.json();
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+/**
+ * ย่อ/บีบอัดรูปก่อนอัปโหลดเสมอ (แปลงเป็น JPEG)
+ * เหตุผล: 1) ทำให้ไฟล์เล็กลงมาก ส่งข้อมูลเร็วขึ้นชัดเจนโดยเฉพาะเน็ตมือถือ
+ *         2) แก้ปัญหารูปดูไม่ได้บางไฟล์ (เช่น HEIC จากกล้อง iPhone) เพราะแปลงเป็น JPEG มาตรฐานให้ทุกครั้ง
+ */
+function compressImage(file, maxDim=1280, quality=0.72){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>resolve(reader.result); // ถ้าเบราว์เซอร์ decode ไม่ได้ ใช้ไฟล์เดิมแทน (fallback)
+      img.onload = ()=>{
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width*scale); height = Math.round(height*scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ===== NAV ===== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['form','status','admin'].forEach(t=>{
+      document.getElementById('tab-'+t).style.display = (t===btn.dataset.tab)?'block':'none';
+    });
+    if(btn.dataset.tab==='status') loadRequests(false);
+    if(btn.dataset.tab==='admin' && sessionStorage.getItem('isAdmin')==='1') loadAdminData();
+  });
+});
+
+/* ===== INIT ===== */
+async function init(){
+  if(API_URL.includes('PASTE_YOUR')){
+    toast('ยังไม่ได้ตั้งค่า API_URL ในไฟล์ index.html');
+  }
+  document.getElementById('f_borrow').value = toLocalInput(new Date());
+  bindPhotoDrop();
+
+  // โหลด settings + tools + departments พร้อมกันในคำขอเดียว (เดิมยิง 3 รอบ ทำให้ช้า)
+  try{
+    const initRes = await apiGet('getInitData');
+    if(initRes.ok){
+      STATE.settings = initRes.settings || {};
+      STATE.tools = initRes.tools || [];
+      STATE.departments = initRes.departments || [];
+      applySettings(); renderToolSelect(); renderDeptSelect();
+    }
+  } catch(err){ toast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: '+err); }
+
+  // ถ้ามี ?tool=ชื่อเครื่องมือ ต่อท้ายลิงก์ (มาจากการสแกน QR) ให้เลือกเครื่องมือนั้นให้อัตโนมัติ
+  const qsTool = new URLSearchParams(location.search).get('tool');
+  if(qsTool){
+    const sel = document.getElementById('f_toolSelect');
+    const opt = [...sel.options].find(o=>o.value===qsTool);
+    if(opt){ sel.value = qsTool; }
+    else { sel.value = '__custom__'; document.getElementById('f_toolCustom').style.display='block'; document.getElementById('f_toolCustom').value = qsTool; }
+  }
+
+  if(sessionStorage.getItem('isAdmin')==='1'){ loadAdminData(); }
+}
+function toLocalInput(d){
+  const pad = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function applySettings(){
+  document.getElementById('siteTitle').textContent = STATE.settings.SiteName || 'ระบบยืม-คืนเครื่องมือ';
+  document.title = STATE.settings.SiteName || 'ระบบยืม-คืนเครื่องมือ';
+  const wrap = document.getElementById('logoWrap');
+  if(STATE.settings.LogoURL){
+    const initial = (STATE.settings.SiteName||'T').trim().charAt(0);
+    wrap.innerHTML = `<img src="${STATE.settings.LogoURL}" alt="logo" onerror="this.outerHTML='<div class=&quot;logo-fallback&quot;>${initial}</div>'">`;
+  } else {
+    const initial = (STATE.settings.SiteName||'T').trim().charAt(0);
+    wrap.innerHTML = `<div class="logo-fallback">${initial}</div>`;
+  }
+}
+function renderToolSelect(){
+  const sel = document.getElementById('f_toolSelect');
+  sel.innerHTML = STATE.tools.map(t=>`<option value="${escAttr(t)}">${escHtml(t)}</option>`).join('') +
+    `<option value="__custom__">อื่นๆ (พิมพ์เอง)</option>`;
+  sel.onchange = ()=>{
+    document.getElementById('f_toolCustom').style.display = (sel.value==='__custom__')?'block':'none';
+  };
+}
+function renderDeptSelect(){
+  const sel = document.getElementById('f_department');
+  sel.innerHTML = STATE.departments.map(d=>`<option value="${escAttr(d)}">${escHtml(d)}</option>`).join('');
+}
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s){ return escHtml(s); }
+
+/* ===== PHOTO PICKER =====
+   f_photo (input[type=file]) เป็นอิลิเมนต์ถาวร ไม่ถูกลบ/สร้างใหม่เด็ดขาด — แก้บั๊กเดิมที่พอเลือก
+   รูปครั้งแรกแล้ว input ถูกเขียนทับหายไปจาก innerHTML ทำให้กด "เปลี่ยนรูป" ครั้งต่อไปไม่ทำงาน
+   ส่วนพรีวิวรูป จะอัปเดตเฉพาะใน #photoPreviewArea เท่านั้น */
+let selectedPhotoBase64 = null;
+function resetPhotoDrop(){
+  document.getElementById('photoPreviewArea').innerHTML = `<span class="ph">แตะเพื่อถ่ายรูป/แนบรูป</span>`;
+  document.getElementById('f_photo').value = '';
+}
+function bindPhotoDrop(){
+  const drop = document.getElementById('photoDrop');
+  const input = document.getElementById('f_photo');
+  const preview = document.getElementById('photoPreviewArea');
+  drop.onclick = ()=>input.click();
+  input.onchange = async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    preview.innerHTML = `<span class="ph">กำลังย่อรูป...</span>`;
+    try{
+      selectedPhotoBase64 = await compressImage(file);
+      preview.innerHTML = `<img src="${selectedPhotoBase64}"><div class="ph">แตะเพื่อเปลี่ยนรูป</div>`;
+    } catch(err){
+      preview.innerHTML = `<span class="ph">แนบรูปไม่สำเร็จ ลองใหม่อีกครั้ง</span>`;
+      selectedPhotoBase64 = null;
+    }
+  };
+}
+
+/* ===== SUBMIT FORM ===== */
+document.getElementById('requestForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('f_name').value.trim();
+  const department = document.getElementById('f_department').value;
+  const toolSel = document.getElementById('f_toolSelect').value;
+  const toolCustom = document.getElementById('f_toolCustom').value.trim();
+  const toolName = toolSel==='__custom__' ? toolCustom : toolSel;
+  const borrowDateTime = document.getElementById('f_borrow').value;
+  const expectedReturnDateTime = document.getElementById('f_return').value;
+  const note = document.getElementById('f_note').value.trim();
+
+  if(!name || !department || !toolName || !borrowDateTime || !expectedReturnDateTime || !selectedPhotoBase64){
+    toast('กรุณากรอกข้อมูลให้ครบทุกช่องที่จำเป็น'); return;
+  }
+  if(new Date(expectedReturnDateTime) <= new Date(borrowDateTime)){
+    toast('วันเวลาที่คาดว่าจะคืน ต้องอยู่หลังวันเวลาที่ยืม'); return;
+  }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+  try{
+    const res = await apiPost('submitRequest', {
+      name, department, toolName, borrowDateTime, expectedReturnDateTime,
+      photo: selectedPhotoBase64, note
+    });
+    if(res.ok){
+      toast('ส่งคำขอสำเร็จ รหัส '+res.id+' รอการอนุมัติ');
+      e.target.reset();
+      selectedPhotoBase64 = null;
+      resetPhotoDrop();
+      document.getElementById('f_toolCustom').style.display = 'none';
+      document.getElementById('f_borrow').value = toLocalInput(new Date());
+    } else {
+      toast('เกิดข้อผิดพลาด: '+res.error);
+    }
+  } catch(err){ toast('เชื่อมต่อไม่สำเร็จ: '+err); }
+  btn.disabled = false; btn.textContent = 'ส่งคำขอยืม';
+});
+
+/* ===== STATUS TAB ===== */
+const STATUS_OPTIONS = ['ทั้งหมด','รออนุมัติ','อนุมัติแล้ว','เกินกำหนด','คืนแล้ว','ปฏิเสธ'];
+function renderChips(){
+  document.getElementById('statusChips').innerHTML = STATUS_OPTIONS.map(s=>
+    `<div class="chip ${s===STATE.statusFilter?'active':''}" onclick="setFilter('${s}')">${s}</div>`).join('');
+}
+function setFilter(s){ STATE.statusFilter = s; renderChips(); renderTickets(); }
+let searchDebounce;
+document.getElementById('searchBox').addEventListener('input', ()=>{
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(renderTickets, 150);
+});
+
+function isOverdue(r){
+  return r.Status==='อนุมัติแล้ว' && new Date(r.ExpectedReturnDateTime) < new Date();
+}
+
+/**
+ * force=false (ค่าเริ่มต้น): ถ้าเพิ่งโหลดข้อมูลไปไม่เกิน REQUESTS_CACHE_MS จะไม่ยิงคำขอซ้ำ
+ * ทำให้การสลับแท็บไปมาไวขึ้นมาก ไม่ต้องรอโหลดใหม่ทุกครั้ง
+ * force=true: ใช้ตอนกดปุ่ม "รีเฟรช" หรือหลังมีการเปลี่ยนสถานะ (อนุมัติ/ปฏิเสธ/แจ้งคืน) ที่ต้องเห็นผลทันที
+ */
+async function loadRequests(force=true){
+  const isFresh = (Date.now() - STATE.requestsLoadedAt) < REQUESTS_CACHE_MS;
+  if(!force && isFresh && STATE.requests.length){ renderChips(); renderTickets(); return; }
+  const res = await apiGet('getRequests');
+  if(res.ok){
+    STATE.requests = res.data.reverse();
+    STATE.requestsLoadedAt = Date.now();
+    renderChips(); renderTickets();
+  }
+}
+
+function renderTickets(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  let list = STATE.requests.filter(r=>{
+    const matchQ = !q || [r.Name, r.Department, r.ToolName].join(' ').toLowerCase().includes(q);
+    let matchStatus = true;
+    if(STATE.statusFilter==='เกินกำหนด') matchStatus = isOverdue(r);
+    else if(STATE.statusFilter!=='ทั้งหมด') matchStatus = r.Status===STATE.statusFilter;
+    return matchQ && matchStatus;
+  });
+  const box = document.getElementById('ticketList');
+  if(list.length===0){ box.innerHTML = '<div class="empty">ไม่พบรายการ</div>'; return; }
+  box.innerHTML = list.map(r=>{
+    const overdue = isOverdue(r);
+    return `
+    <div class="ticket st-${r.Status} ${overdue?'overdue':''}">
+      <div class="id mono">${r.ID}</div>
+      <div class="toolname">${escHtml(r.ToolName)}</div>
+      <div class="meta">
+        ผู้ยืม: ${escHtml(r.Name)} · ${escHtml(r.Department)}<br>
+        ยืม: <span class="mono">${fmtDate(r.BorrowDateTime)}</span> → คืน: <span class="mono">${fmtDate(r.ExpectedReturnDateTime)}</span>
+      </div>
+      <div style="margin-top:8px;">
+        <span class="badge ${r.Status}">${r.Status}</span>
+        ${overdue?'<span class="badge overdue">เกินกำหนดคืน</span>':''}
+      </div>
+      ${photoTag(r.PhotoURL)}
+      ${r.Status==='อนุมัติแล้ว'?`<div class="actions"><button class="ghost" onclick="openReturnModal('${r.ID}')">แจ้งคืนเครื่องมือ</button></div>`:''}
+      ${r.Status==='ปฏิเสธ' && r.RejectReason?`<div class="hint">เหตุผล: ${escHtml(r.RejectReason)}</div>`:''}
+      ${r.Status==='คืนแล้ว'?`<div class="hint">คืนเมื่อ: <span class="mono">${fmtDate(r.ReturnedAt)}</span> ${r.IsDamaged==='ใช่'?'<span class="badge" style="background:var(--red-soft); color:var(--red);">⚠️ ชำรุด/เสียหาย</span>':''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function fmtDate(v){
+  if(!v) return '-';
+  const d = new Date(v);
+  if(isNaN(d)) return v;
+  const pad = n=>String(n).padStart(2,'0');
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+/* แสดงรูปพร้อม fallback: ถ้ารูปโหลดไม่ขึ้น (onerror) จะเปลี่ยนเป็นลิงก์ให้กดเปิดดูตรงๆ แทน ไม่ปล่อยเป็นไอคอนรูปหักเฉยๆ */
+function photoTag(url){
+  if(!url) return '';
+  const safe = escAttr(url);
+  return `<img class="thumb" src="${safe}" onclick="openLightbox('${safe}')" onerror="this.outerHTML='<a class=&quot;hint&quot; href=&quot;${safe}&quot; target=&quot;_blank&quot;>ดูรูปหลักฐาน (เปิดลิงก์)</a>'">`;
+}
+function openLightbox(url){
+  if(!url) return;
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  const safe = escAttr(url);
+  lb.innerHTML = `<img src="${safe}" onerror="this.parentElement.innerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; style=&quot;color:#fff&quot;>เปิดรูปในแท็บใหม่</a>'">`;
+  lb.onclick = (ev)=>{ if(ev.target===lb) lb.remove(); };
+  document.body.appendChild(lb);
+}
+
+/* ===== RETURN MODAL ===== */
+let returnTargetId = null;
+function openReturnModal(id){
+  returnTargetId = id;
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.id = 'returnModalBg';
+  bg.innerHTML = `
+    <div class="modal">
+      <h3>แจ้งคืนเครื่องมือ</h3>
+      <label>รูปถ่ายสภาพตอนคืน (ถ้ามี)</label>
+      <input type="file" accept="image/*" capture="environment" id="returnPhotoInput">
+      <label>หมายเหตุ (ถ้ามี)</label>
+      <textarea id="returnNoteInput" rows="2" placeholder="เช่น สภาพเรียบร้อยดี หรือรายละเอียดความเสียหาย"></textarea>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:14px; cursor:pointer;">
+        <input type="checkbox" id="returnDamagedInput" style="width:auto;">
+        <span style="font-weight:600; color:var(--red);">พบว่าอุปกรณ์ชำรุด/เสียหาย</span>
+      </label>
+      <div class="hint">ถ้าเลือกข้อนี้ ระบบจะแจ้งเตือนผู้ดูแลทันทีเป็นกรณีเร่งด่วน</div>
+      <button class="primary" onclick="confirmReturn()">ยืนยันการคืน</button>
+      <button class="ghost" style="width:100%; margin-top:8px;" onclick="document.getElementById('returnModalBg').remove()">ยกเลิก</button>
+    </div>`;
+  document.body.appendChild(bg);
+}
+async function confirmReturn(){
+  const file = document.getElementById('returnPhotoInput').files[0];
+  const note = document.getElementById('returnNoteInput').value.trim();
+  const isDamaged = document.getElementById('returnDamagedInput').checked;
+  let returnPhoto = null;
+  if(file) returnPhoto = await compressImage(file);
+  const res = await apiPost('markReturned', { id: returnTargetId, returnPhoto, note, isDamaged });
+  if(res.ok){ toast('บันทึกการคืนแล้ว'); document.getElementById('returnModalBg').remove(); loadRequests(true); }
+  else toast('เกิดข้อผิดพลาด: '+res.error);
+}
+
+/* ===== ADMIN ===== */
+function checkPin(){
+  const pin = document.getElementById('pinInput').value;
+  apiPost('verifyPin', {pin}).then(res=>{
+    if(res.ok && res.valid){
+      sessionStorage.setItem('isAdmin','1');
+      document.getElementById('pinGate').style.display='none';
+      document.getElementById('adminPanel').style.display='block';
+      loadAdminData();
+    } else {
+      document.getElementById('pinError').textContent = 'รหัสไม่ถูกต้อง';
+    }
+  });
+}
+function logoutAdmin(){
+  sessionStorage.removeItem('isAdmin');
+  document.getElementById('pinGate').style.display='block';
+  document.getElementById('adminPanel').style.display='none';
+  document.getElementById('pinInput').value='';
+}
+if(sessionStorage.getItem('isAdmin')==='1'){
+  document.getElementById('pinGate').style.display='none';
+  document.getElementById('adminPanel').style.display='block';
+}
+
+async function loadAdminData(){
+  await loadRequests(true);
+  renderPending();
+  renderToolAdminList();
+  renderDeptAdminList();
+  renderSummaryReport();
+  document.getElementById('set_siteName').value = STATE.settings.SiteName || '';
+  document.getElementById('set_adminEmail').value = STATE.settings.AdminEmail || '';
+  document.getElementById('lineStatusHint').textContent = STATE.settings.LineConnected
+    ? '✓ ตั้งค่า LINE ไว้แล้ว (พิมพ์ทับช่องด้านบนถ้าต้องการเปลี่ยน token)'
+    : 'ยังไม่ได้ตั้งค่า';
+  if(STATE.settings.LogoURL){
+    document.getElementById('logoPreview').src = STATE.settings.LogoURL;
+    document.getElementById('logoPreview').style.display='inline-block';
+    document.getElementById('logoHint').textContent = 'โลโก้ปัจจุบัน';
+  }
+}
+function renderPending(){
+  const pending = STATE.requests.filter(r=>r.Status==='รออนุมัติ');
+  const box = document.getElementById('pendingList');
+  if(pending.length===0){ box.innerHTML = '<div class="empty">ไม่มีคำขอรออนุมัติ</div>'; return; }
+  box.innerHTML = pending.map(r=>`
+    <div class="ticket st-รออนุมัติ">
+      <div class="id mono">${r.ID}</div>
+      <div class="toolname">${escHtml(r.ToolName)}</div>
+      <div class="meta">
+        ${escHtml(r.Name)} · ${escHtml(r.Department)}<br>
+        ยืม <span class="mono">${fmtDate(r.BorrowDateTime)}</span> → คืน <span class="mono">${fmtDate(r.ExpectedReturnDateTime)}</span>
+      </div>
+      ${photoTag(r.PhotoURL)}
+      <div class="actions">
+        <button class="ghost" onclick="approveReq('${r.ID}')">อนุมัติ</button>
+        <button class="ghost danger" onclick="rejectReq('${r.ID}')">ปฏิเสธ</button>
+      </div>
+    </div>`).join('');
+}
+async function approveReq(id){
+  const res = await apiPost('approveRequest', {id, approvedBy:'ผู้ดูแลระบบ'});
+  if(res.ok){ toast('อนุมัติแล้ว'); await loadRequests(true); renderPending(); renderSummaryReport(); }
+}
+async function rejectReq(id){
+  const reason = prompt('ระบุเหตุผลที่ปฏิเสธ (ถ้ามี):') || '';
+  const res = await apiPost('rejectRequest', {id, reason});
+  if(res.ok){ toast('ปฏิเสธคำขอแล้ว'); await loadRequests(true); renderPending(); renderSummaryReport(); }
+}
+
+/* จัดการรายการเครื่องมือ/แผนกแบบ optimistic: อัปเดตหน้าจอทันทีจากข้อมูลในเครื่อง
+   ไม่ต้องรอยิง getTools/getDepartments ซ้ำ ทำให้กดเพิ่ม/ลบแล้วรู้สึกไวขึ้นมาก */
+function renderToolAdminList(){
+  document.getElementById('toolList').innerHTML = STATE.tools.map(t=>`
+    <div class="listitem"><span>${escHtml(t)}</span>
+    <span style="display:flex; gap:6px;">
+      <button class="ghost" onclick="showToolQR('${escAttr(t)}')">QR</button>
+      <button class="ghost danger" onclick="deleteTool('${escAttr(t)}')">ลบ</button>
+    </span></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
+}
+async function addTool(){
+  const v = document.getElementById('newTool').value.trim();
+  if(!v || STATE.tools.includes(v)) return;
+  document.getElementById('newTool').value='';
+  STATE.tools.push(v); renderToolSelect(); renderToolAdminList();
+  const res = await apiPost('addTool', {name:v});
+  if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
+}
+async function deleteTool(name){
+  STATE.tools = STATE.tools.filter(t=>t!==name);
+  renderToolSelect(); renderToolAdminList();
+  const res = await apiPost('deleteTool', {name});
+  if(!res.ok) toast('ลบไม่สำเร็จ: '+res.error);
+}
+function showToolQR(toolName){
+  const url = `${location.origin}${location.pathname}?tool=${encodeURIComponent(toolName)}`;
+  const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(url)}`;
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal" style="text-align:center;">
+    <h3>${escHtml(toolName)}</h3>
+    <img src="${qrImg}" style="width:100%; max-width:260px; border-radius:8px;">
+    <div class="hint" style="margin:10px 0;">พิมพ์แล้วนำไปติดที่ตัวเครื่องมือ สแกนแล้วจะเปิดฟอร์มพร้อมเลือกเครื่องมือนี้อัตโนมัติ</div>
+    <a href="${qrImg}" target="_blank" class="ghost" style="display:block; text-align:center; text-decoration:none; padding:8px 12px; margin-bottom:8px;">เปิดรูป QR เต็มขนาด (บันทึก/พิมพ์)</a>
+    <button class="ghost" style="width:100%;" onclick="this.closest('.modal-bg').remove()">ปิด</button>
+  </div>`;
+  bg.onclick = (ev)=>{ if(ev.target===bg) bg.remove(); };
+  document.body.appendChild(bg);
+}
+
+function renderDeptAdminList(){
+  document.getElementById('deptList').innerHTML = STATE.departments.map(d=>`
+    <div class="listitem"><span>${escHtml(d)}</span>
+    <button class="ghost danger" onclick="deleteDept('${escAttr(d)}')">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
+}
+async function addDept(){
+  const v = document.getElementById('newDept').value.trim();
+  if(!v || STATE.departments.includes(v)) return;
+  document.getElementById('newDept').value='';
+  STATE.departments.push(v); renderDeptSelect(); renderDeptAdminList();
+  const res = await apiPost('addDepartment', {name:v});
+  if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
+}
+async function deleteDept(name){
+  STATE.departments = STATE.departments.filter(d=>d!==name);
+  renderDeptSelect(); renderDeptAdminList();
+  const res = await apiPost('deleteDepartment', {name});
+  if(!res.ok) toast('ลบไม่สำเร็จ: '+res.error);
+}
+
+/* ===== รายงานสรุปผู้ยืม (ข้อมูลเชิงวินัยการใช้เครื่องมือ) =====
+   นับทั้งรายการที่ "กำลังเกินกำหนด" อยู่ตอนนี้ และรายการที่ "คืนช้ากว่ากำหนด" ไปแล้วในอดีต
+   เพื่อให้เห็นภาพวินัยการคืนของแต่ละคนจริงๆ ไม่ใช่แค่สถานะปัจจุบัน */
+function wasReturnedLate(r){
+  return r.Status==='คืนแล้ว' && r.ReturnedAt && new Date(r.ReturnedAt) > new Date(r.ExpectedReturnDateTime);
+}
+function renderSummaryReport(){
+  const box = document.getElementById('summaryReport');
+  if(!box) return;
+  const byName = {};
+  STATE.requests.forEach(r=>{
+    if(!byName[r.Name]) byName[r.Name] = { total:0, overdue:0, returned:0 };
+    byName[r.Name].total++;
+    if(isOverdue(r) || wasReturnedLate(r)) byName[r.Name].overdue++;
+    if(r.Status==='คืนแล้ว') byName[r.Name].returned++;
+  });
+  const names = Object.keys(byName).sort((a,b)=> byName[b].overdue-byName[a].overdue || byName[b].total-byName[a].total);
+  if(names.length===0){ box.innerHTML = '<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
+  box.innerHTML = names.map(n=>`
+    <div class="listitem" style="cursor:pointer;" onclick="viewPersonHistory('${escAttr(n)}')">
+      <span>${escHtml(n)}</span>
+      <span class="hint mono">ยืมทั้งหมด ${byName[n].total} · คืนแล้ว ${byName[n].returned} ${byName[n].overdue?`· <span style="color:var(--red)">คืนช้า/เกินกำหนด ${byName[n].overdue}</span>`:''}</span>
+    </div>`).join('');
+}
+function viewPersonHistory(name){
+  document.querySelector('.tab-btn[data-tab="status"]').click();
+  document.getElementById('searchBox').value = name;
+  STATE.statusFilter = 'ทั้งหมด';
+  renderChips(); renderTickets();
+}
+
+/* ===== ส่งออก CSV ===== */
+function exportCSV(){
+  if(STATE.requests.length===0){ toast('ยังไม่มีข้อมูลให้ส่งออก'); return; }
+  const headers = ['รหัส','วันที่ยื่นคำขอ','ผู้ยืม','แผนก','เครื่องมือ','วันเวลาที่ยืม','วันเวลาที่คาดว่าจะคืน','สถานะ','ผู้อนุมัติ','วันที่คืนจริง','หมายเหตุ'];
+  const rows = STATE.requests.map(r=>[r.ID, fmtDate(r.CreatedAt), r.Name, r.Department, r.ToolName,
+    fmtDate(r.BorrowDateTime), fmtDate(r.ExpectedReturnDateTime), r.Status, r.ApprovedBy||'', fmtDate(r.ReturnedAt), r.ReturnNote||'']);
+  const csvBody = [headers, ...rows].map(row=>
+    row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(',')
+  ).join('\r\n');
+  // เติม BOM (\uFEFF) ไว้หน้าไฟล์ ไม่งั้นเปิดใน Excel บน Windows แล้วภาษาไทยจะเพี้ยน
+  const blob = new Blob(['\uFEFF'+csvBody], {type:'text/csv;charset=utf-8;'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `รายงานยืม-คืนเครื่องมือ_${toLocalInput(new Date()).slice(0,10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+async function saveSettings(){
+  const siteName = document.getElementById('set_siteName').value.trim();
+  const adminEmail = document.getElementById('set_adminEmail').value.trim();
+  const lineToken = document.getElementById('set_lineToken').value.trim();
+  const btn = document.getElementById('saveSettingsBtn');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  const settingsPayload = { SiteName: siteName, AdminEmail: adminEmail };
+  if(lineToken) settingsPayload.LineChannelAccessToken = lineToken; // ส่งเฉพาะตอนกรอกใหม่ ไม่งั้นเว้นว่างไว้จะไม่ไปลบ token เดิม
+  await apiPost('updateSettings', { settings: settingsPayload });
+  const logoFile = document.getElementById('set_logo').files[0];
+  if(logoFile){
+    const base64 = await compressImage(logoFile, 400, 0.85);
+    const res = await apiPost('updateLogo', {logo: base64});
+    if(res.ok) STATE.settings.LogoURL = res.url;
+  }
+  STATE.settings.SiteName = siteName;
+  STATE.settings.AdminEmail = adminEmail;
+  if(lineToken){ STATE.settings.LineConnected = true; document.getElementById('set_lineToken').value=''; document.getElementById('lineStatusHint').textContent='✓ ตั้งค่า LINE ไว้แล้ว (พิมพ์ทับช่องด้านบนถ้าต้องการเปลี่ยน token)'; }
+  applySettings();
+  btn.disabled = false; btn.textContent = 'บันทึกการตั้งค่า';
+  toast('บันทึกการตั้งค่าเรียบร้อย');
+}
+
+async function saveSettingsThenTest(){
+  await saveSettings();
+  toast('กำลังส่งข้อความทดสอบ...');
+  const res = await apiPost('testNotify', {});
+  if(!res.ok){ showNotifyResultModal(`เกิดข้อผิดพลาด: ${res.error}`); return; }
+  const r = res.result || {};
+  const lines = [];
+  if(r.email && r.email.attempted){
+    lines.push(r.email.ok ? '✅ อีเมล: ส่งสำเร็จ' : `❌ อีเมล: ส่งไม่สำเร็จ — ${r.email.error}`);
+  } else {
+    lines.push('⚪ อีเมล: ยังไม่ได้ตั้งค่า (ข้ามไป)');
+  }
+  if(r.line && r.line.attempted){
+    lines.push(r.line.ok ? '✅ LINE: ส่งสำเร็จ' : `❌ LINE: ส่งไม่สำเร็จ — ${r.line.error}`);
+  } else {
+    lines.push(`⚪ LINE: ${r.line ? r.line.error : 'ยังไม่ได้ตั้งค่า'}`);
+  }
+  showNotifyResultModal(lines.join('\n'));
+}
+function showNotifyResultModal(text){
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal">
+    <h3>ผลการทดสอบแจ้งเตือน</h3>
+    <div style="white-space:pre-line; font-size:13.5px; line-height:1.8;">${escHtml(text)}</div>
+    <button class="ghost" style="width:100%; margin-top:14px;" onclick="this.closest('.modal-bg').remove()">ปิด</button>
+  </div>`;
+  bg.onclick = (ev)=>{ if(ev.target===bg) bg.remove(); };
+  document.body.appendChild(bg);
+}
+
+init();
+</script>
+</body>
+</html>
