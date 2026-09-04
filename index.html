@@ -178,6 +178,8 @@
 
         <label>แผนก/กลุ่ม<span class="req">*</span></label>
         <select id="f_department" required></select>
+        <input type="text" id="f_departmentCustom" placeholder="พิมพ์ชื่อแผนก/กลุ่มของคุณ" style="display:none; margin-top:8px;">
+        <div class="hint" id="f_departmentHint" style="display:none;">แผนกใหม่นี้จะถูกเพิ่มเข้าระบบให้อัตโนมัติ และจะเลือกได้ในครั้งถัดไป (การลบทำได้เฉพาะผู้ดูแลระบบเท่านั้น)</div>
 
         <label>เครื่องมือที่ต้องการยืม<span class="req">*</span></label>
         <select id="f_toolSelect" required></select>
@@ -232,6 +234,24 @@
       <div class="card">
         <h2>รายการรออนุมัติ</h2>
         <div id="pendingList"></div>
+      </div>
+
+      <div class="card">
+        <h2>ประวัติทั้งหมด (มุมมองผู้ดูแล)</h2>
+        <div class="hint" style="margin-bottom:8px;">ดูรูปหลักฐานทั้งก่อนยืมและหลังคืน พร้อมกรองข้อมูลเชิงลึกและส่งออกเป็น PDF</div>
+        <div class="row2">
+          <select id="adm_filterDept"><option value="">ทุกแผนก/กลุ่ม</option></select>
+          <select id="adm_filterTool"><option value="">ทุกเครื่องมือ</option></select>
+        </div>
+        <div class="row2" style="margin-top:10px;">
+          <div><label style="margin-top:0;">ตั้งแต่วันที่ยืม</label><input type="date" id="adm_dateFrom"></div>
+          <div><label style="margin-top:0;">ถึงวันที่ยืม</label><input type="date" id="adm_dateTo"></div>
+        </div>
+        <label>ค้นหาชื่อ/เครื่องมือ</label>
+        <input type="text" id="adm_search" placeholder="พิมพ์เพื่อค้นหา">
+        <div class="chips" id="adm_statusChips" style="margin-top:12px;"></div>
+        <div id="adminHistoryList"></div>
+        <button class="ghost" style="width:100%; margin-top:10px;" onclick="exportPDF()">ส่งออกรายการที่กรองไว้เป็น PDF</button>
       </div>
 
       <div class="card">
@@ -298,7 +318,7 @@
 /* ========= CONFIG =========
    วางลิงก์ Web app ที่ได้จาก Deploy ของ Google Apps Script ตรงนี้
 */
-const API_URL = 'https://script.google.com/macros/s/AKfycbwFgDYWT8x4_qET-suglcjSyG15ONt3Bz7ntIzjtzYoF5BA4yvLl2kg9cGlxJWdeNA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyME5RkIMeAl6e-koWFagH-sOR6KhJJDameLttO0vBg56VCHIg38iSGed6hLI38tHLk/exec';
 const REQUESTS_CACHE_MS = 20000; // ไม่โหลดข้อมูลซ้ำถ้าเพิ่งโหลดไปไม่เกิน 20 วิ ทำให้สลับแท็บไปมาไวขึ้น
 
 let STATE = { settings:{}, tools:[], departments:[], requests:[], statusFilter:'ทั้งหมด', requestsLoadedAt:0 };
@@ -430,7 +450,13 @@ function renderToolSelect(){
 }
 function renderDeptSelect(){
   const sel = document.getElementById('f_department');
-  sel.innerHTML = STATE.departments.map(d=>`<option value="${escAttr(d)}">${escHtml(d)}</option>`).join('');
+  sel.innerHTML = STATE.departments.map(d=>`<option value="${escAttr(d)}">${escHtml(d)}</option>`).join('') +
+    `<option value="__custom__">+ เพิ่มแผนก/กลุ่มของฉันเอง</option>`;
+  sel.onchange = ()=>{
+    const showCustom = sel.value==='__custom__';
+    document.getElementById('f_departmentCustom').style.display = showCustom?'block':'none';
+    document.getElementById('f_departmentHint').style.display = showCustom?'block':'none';
+  };
 }
 function escHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escAttr(s){ return escHtml(s); }
@@ -467,7 +493,9 @@ function bindPhotoDrop(){
 document.getElementById('requestForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const name = document.getElementById('f_name').value.trim();
-  const department = document.getElementById('f_department').value;
+  const deptSel = document.getElementById('f_department').value;
+  const deptCustom = document.getElementById('f_departmentCustom').value.trim();
+  const department = deptSel==='__custom__' ? deptCustom : deptSel;
   const toolSel = document.getElementById('f_toolSelect').value;
   const toolCustom = document.getElementById('f_toolCustom').value.trim();
   const toolName = toolSel==='__custom__' ? toolCustom : toolSel;
@@ -484,6 +512,12 @@ document.getElementById('requestForm').addEventListener('submit', async (e)=>{
   const btn = document.getElementById('submitBtn');
   btn.disabled = true; btn.textContent = 'กำลังส่ง...';
   try{
+    // ถ้าเลือก "เพิ่มแผนก/กลุ่มของฉันเอง" และยังไม่มีชื่อนี้ในระบบ ให้เพิ่มเข้าไปก่อนส่งคำขอ
+    // (ผู้ใช้ทั่วไปเพิ่มได้ แต่ลบได้เฉพาะผู้ดูแลระบบในแท็บผู้ดูแลระบบเท่านั้น)
+    if(deptSel==='__custom__' && !STATE.departments.includes(department)){
+      const addRes = await apiPost('addDepartment', {name: department});
+      if(addRes.ok){ STATE.departments.push(department); renderDeptSelect(); }
+    }
     const res = await apiPost('submitRequest', {
       name, department, toolName, borrowDateTime, expectedReturnDateTime,
       photo: selectedPhotoBase64, note
@@ -494,6 +528,8 @@ document.getElementById('requestForm').addEventListener('submit', async (e)=>{
       selectedPhotoBase64 = null;
       resetPhotoDrop();
       document.getElementById('f_toolCustom').style.display = 'none';
+      document.getElementById('f_departmentCustom').style.display = 'none';
+      document.getElementById('f_departmentHint').style.display = 'none';
       document.getElementById('f_borrow').value = toLocalInput(new Date());
     } else {
       toast('เกิดข้อผิดพลาด: '+res.error);
@@ -590,6 +626,17 @@ function openLightbox(url){
   document.body.appendChild(lb);
 }
 
+/* แสดงรูป "ก่อนยืม" กับ "หลังคืน" เทียบข้างกัน สำหรับมุมมองผู้ดูแลระบบที่ต้องตรวจสอบสภาพเครื่องมือ */
+function photoPairTag(beforeUrl, afterUrl){
+  if(!beforeUrl && !afterUrl) return '';
+  const col = (label, url) => `
+    <div style="flex:1; min-width:0;">
+      <div class="hint" style="margin-bottom:4px;">${label}</div>
+      ${url ? photoTag(url) : '<div class="hint">— ไม่มีรูป —</div>'}
+    </div>`;
+  return `<div style="display:flex; gap:10px; margin-top:8px;">${col('ก่อนยืม', beforeUrl)}${col('หลังคืน', afterUrl)}</div>`;
+}
+
 /* ===== RETURN MODAL ===== */
 let returnTargetId = null;
 function openReturnModal(id){
@@ -631,6 +678,7 @@ function checkPin(){
   apiPost('verifyPin', {pin}).then(res=>{
     if(res.ok && res.valid){
       sessionStorage.setItem('isAdmin','1');
+      sessionStorage.setItem('adminPin', pin); // เก็บไว้ใช้ยืนยันตอนสั่งลบ (เฉพาะช่วง session นี้)
       document.getElementById('pinGate').style.display='none';
       document.getElementById('adminPanel').style.display='block';
       loadAdminData();
@@ -641,6 +689,7 @@ function checkPin(){
 }
 function logoutAdmin(){
   sessionStorage.removeItem('isAdmin');
+  sessionStorage.removeItem('adminPin');
   document.getElementById('pinGate').style.display='block';
   document.getElementById('adminPanel').style.display='none';
   document.getElementById('pinInput').value='';
@@ -656,6 +705,8 @@ async function loadAdminData(){
   renderToolAdminList();
   renderDeptAdminList();
   renderSummaryReport();
+  initAdminHistoryFilters();
+  renderAdminHistory();
   document.getElementById('set_siteName').value = STATE.settings.SiteName || '';
   document.getElementById('set_adminEmail').value = STATE.settings.AdminEmail || '';
   document.getElementById('lineStatusHint').textContent = STATE.settings.LineConnected
@@ -696,6 +747,95 @@ async function rejectReq(id){
   if(res.ok){ toast('ปฏิเสธคำขอแล้ว'); await loadRequests(true); renderPending(); renderSummaryReport(); }
 }
 
+/* ===== ประวัติทั้งหมด (มุมมองผู้ดูแล) — กรองละเอียด + ดูรูปก่อน/หลัง + ส่งออก PDF ===== */
+const ADM_STATUS_OPTIONS = ['ทั้งหมด','รออนุมัติ','อนุมัติแล้ว','เกินกำหนด','คืนแล้ว','ปฏิเสธ'];
+let ADM_STATE = { statusFilter: 'ทั้งหมด' };
+
+function initAdminHistoryFilters(){
+  const deptSel = document.getElementById('adm_filterDept');
+  const toolSel = document.getElementById('adm_filterTool');
+  deptSel.innerHTML = '<option value="">ทุกแผนก/กลุ่ม</option>' + STATE.departments.map(d=>`<option value="${escAttr(d)}">${escHtml(d)}</option>`).join('');
+  toolSel.innerHTML = '<option value="">ทุกเครื่องมือ</option>' + STATE.tools.map(t=>`<option value="${escAttr(t)}">${escHtml(t)}</option>`).join('');
+  deptSel.onchange = renderAdminHistory;
+  toolSel.onchange = renderAdminHistory;
+  document.getElementById('adm_dateFrom').onchange = renderAdminHistory;
+  document.getElementById('adm_dateTo').onchange = renderAdminHistory;
+  let admSearchDebounce;
+  document.getElementById('adm_search').oninput = ()=>{ clearTimeout(admSearchDebounce); admSearchDebounce = setTimeout(renderAdminHistory, 150); };
+
+  document.getElementById('adm_statusChips').innerHTML = ADM_STATUS_OPTIONS.map(s=>
+    `<div class="chip ${s===ADM_STATE.statusFilter?'active':''}" onclick="setAdmFilter('${s}')">${s}</div>`).join('');
+}
+function setAdmFilter(s){ ADM_STATE.statusFilter = s; initAdminHistoryFilters(); renderAdminHistory(); }
+
+function getFilteredAdminHistory(){
+  const dept = document.getElementById('adm_filterDept').value;
+  const tool = document.getElementById('adm_filterTool').value;
+  const dateFrom = document.getElementById('adm_dateFrom').value; // YYYY-MM-DD
+  const dateTo = document.getElementById('adm_dateTo').value;
+  const q = document.getElementById('adm_search').value.trim().toLowerCase();
+
+  return STATE.requests.filter(r=>{
+    if(dept && r.Department!==dept) return false;
+    if(tool && r.ToolName!==tool) return false;
+    if(q && !([r.Name, r.ToolName, r.Department].join(' ').toLowerCase().includes(q))) return false;
+    if(ADM_STATE.statusFilter==='เกินกำหนด' && !isOverdue(r)) return false;
+    else if(ADM_STATE.statusFilter!=='ทั้งหมด' && ADM_STATE.statusFilter!=='เกินกำหนด' && r.Status!==ADM_STATE.statusFilter) return false;
+    if(dateFrom || dateTo){
+      const bd = new Date(r.BorrowDateTime);
+      if(dateFrom && bd < new Date(dateFrom+'T00:00:00')) return false;
+      if(dateTo && bd > new Date(dateTo+'T23:59:59')) return false;
+    }
+    return true;
+  });
+}
+
+function renderAdminHistory(){
+  const list = getFilteredAdminHistory();
+  const box = document.getElementById('adminHistoryList');
+  if(!box) return;
+  if(list.length===0){ box.innerHTML = '<div class="empty">ไม่พบรายการตามตัวกรองนี้</div>'; return; }
+  box.innerHTML = `<div class="hint" style="margin-bottom:8px;">พบ ${list.length} รายการ</div>` + list.map(r=>{
+    const overdue = isOverdue(r);
+    return `
+    <div class="ticket st-${r.Status} ${overdue?'overdue':''}">
+      <div class="id mono">${r.ID}</div>
+      <div class="toolname">${escHtml(r.ToolName)}</div>
+      <div class="meta">
+        ${escHtml(r.Name)} · ${escHtml(r.Department)}<br>
+        ยืม <span class="mono">${fmtDate(r.BorrowDateTime)}</span> → คืน <span class="mono">${fmtDate(r.ExpectedReturnDateTime)}</span>
+        ${r.Status==='คืนแล้ว' ? `<br>คืนจริง <span class="mono">${fmtDate(r.ReturnedAt)}</span>` : ''}
+      </div>
+      <div style="margin-top:8px;">
+        <span class="badge ${r.Status}">${r.Status}</span>
+        ${overdue?'<span class="badge overdue">เกินกำหนดคืน</span>':''}
+        ${r.IsDamaged==='ใช่'?'<span class="badge" style="background:var(--red-soft); color:var(--red);">⚠️ ชำรุด/เสียหาย</span>':''}
+      </div>
+      ${photoPairTag(r.PhotoURL, r.ReturnPhotoURL)}
+      ${r.RejectReason?`<div class="hint" style="margin-top:6px;">เหตุผลที่ปฏิเสธ: ${escHtml(r.RejectReason)}</div>`:''}
+      ${r.ReturnNote?`<div class="hint" style="margin-top:6px;">หมายเหตุตอนคืน: ${escHtml(r.ReturnNote)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function exportPDF(){
+  const ids = getFilteredAdminHistory().map(r=>r.ID);
+  if(ids.length===0){ toast('ไม่มีข้อมูลให้ส่งออกตามตัวกรองนี้'); return; }
+  toast('กำลังสร้าง PDF... รอสักครู่');
+  const res = await apiPost('exportPdf', {ids});
+  if(!res.ok){ toast('สร้าง PDF ไม่สำเร็จ: '+res.error); return; }
+  const byteChars = atob(res.pdfBase64);
+  const byteNumbers = new Array(byteChars.length);
+  for(let i=0;i<byteChars.length;i++) byteNumbers[i]=byteChars.charCodeAt(i);
+  const blob = new Blob([new Uint8Array(byteNumbers)], {type:'application/pdf'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = res.filename || 'รายงานยืม-คืนเครื่องมือ.pdf';
+  link.click();
+  URL.revokeObjectURL(link.href);
+  toast('ส่งออก PDF สำเร็จ');
+}
+
 /* จัดการรายการเครื่องมือ/แผนกแบบ optimistic: อัปเดตหน้าจอทันทีจากข้อมูลในเครื่อง
    ไม่ต้องรอยิง getTools/getDepartments ซ้ำ ทำให้กดเพิ่ม/ลบแล้วรู้สึกไวขึ้นมาก */
 function renderToolAdminList(){
@@ -715,10 +855,11 @@ async function addTool(){
   if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
 }
 async function deleteTool(name){
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('deleteTool', {name, pin});
+  if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
   STATE.tools = STATE.tools.filter(t=>t!==name);
   renderToolSelect(); renderToolAdminList();
-  const res = await apiPost('deleteTool', {name});
-  if(!res.ok) toast('ลบไม่สำเร็จ: '+res.error);
 }
 function showToolQR(toolName){
   const url = `${location.origin}${location.pathname}?tool=${encodeURIComponent(toolName)}`;
@@ -750,10 +891,11 @@ async function addDept(){
   if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
 }
 async function deleteDept(name){
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('deleteDepartment', {name, pin});
+  if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
   STATE.departments = STATE.departments.filter(d=>d!==name);
   renderDeptSelect(); renderDeptAdminList();
-  const res = await apiPost('deleteDepartment', {name});
-  if(!res.ok) toast('ลบไม่สำเร็จ: '+res.error);
 }
 
 /* ===== รายงานสรุปผู้ยืม (ข้อมูลเชิงวินัยการใช้เครื่องมือ) =====
