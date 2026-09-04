@@ -318,7 +318,7 @@
 /* ========= CONFIG =========
    วางลิงก์ Web app ที่ได้จาก Deploy ของ Google Apps Script ตรงนี้
 */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyME5RkIMeAl6e-koWFagH-sOR6KhJJDameLttO0vBg56VCHIg38iSGed6hLI38tHLk/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzNUpVGqJ1TXA2vj1McvB_KyGj0DbdS9Baf9kJyCbEtBtzHkztqDUmh7GecO9JH-EI4/exec';
 const REQUESTS_CACHE_MS = 20000; // ไม่โหลดข้อมูลซ้ำถ้าเพิ่งโหลดไปไม่เกิน 20 วิ ทำให้สลับแท็บไปมาไวขึ้น
 
 let STATE = { settings:{}, tools:[], departments:[], requests:[], statusFilter:'ทั้งหมด', requestsLoadedAt:0 };
@@ -330,17 +330,29 @@ function toast(msg){
 }
 
 async function apiGet(action, params={}){
-  const usp = new URLSearchParams({action, ...params});
-  const res = await fetch(`${API_URL}?${usp.toString()}`);
-  return res.json();
+  try{
+    const usp = new URLSearchParams({action, ...params});
+    const res = await fetch(`${API_URL}?${usp.toString()}`);
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch(e){ return { ok:false, error: 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ข้อมูลที่ถูกต้อง (มักเกิดจาก Deploy เวอร์ชันใหม่ยังไม่มีผล หรือสิทธิ์เข้าถึงเว็บแอปตั้งไว้ไม่ถูกต้อง)' }; }
+  } catch(err){
+    return { ok:false, error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+err };
+  }
 }
 async function apiPost(action, payload={}){
-  const res = await fetch(API_URL, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({action, ...payload})
-  });
-  return res.json();
+  try{
+    const res = await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action, ...payload})
+    });
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch(e){ return { ok:false, error: 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ข้อมูลที่ถูกต้อง (มักเกิดจาก Deploy เวอร์ชันใหม่ยังไม่มีผล หรือสิทธิ์เข้าถึงเว็บแอปตั้งไว้ไม่ถูกต้อง)' }; }
+  } catch(err){
+    return { ok:false, error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+err };
+  }
 }
 
 function fileToBase64(file){
@@ -738,17 +750,31 @@ function renderPending(){
     </div>`).join('');
 }
 async function approveReq(id){
-  const res = await apiPost('approveRequest', {id, approvedBy:'ผู้ดูแลระบบ'});
-  if(res.ok){ toast('อนุมัติแล้ว'); await loadRequests(true); renderPending(); renderSummaryReport(); }
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('approveRequest', {id, approvedBy:'ผู้ดูแลระบบ', pin});
+  if(res.ok){
+    toast('อนุมัติแล้ว');
+    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
+  } else {
+    toast('อนุมัติไม่สำเร็จ: '+(res.error || 'ไม่ทราบสาเหตุ — ลองรีเฟรชหน้าเว็บแล้วลองใหม่'));
+  }
 }
 async function rejectReq(id){
   const reason = prompt('ระบุเหตุผลที่ปฏิเสธ (ถ้ามี):') || '';
-  const res = await apiPost('rejectRequest', {id, reason});
-  if(res.ok){ toast('ปฏิเสธคำขอแล้ว'); await loadRequests(true); renderPending(); renderSummaryReport(); }
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('rejectRequest', {id, reason, pin});
+  if(res.ok){
+    toast('ปฏิเสธคำขอแล้ว');
+    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
+  } else {
+    toast('ปฏิเสธไม่สำเร็จ: '+(res.error || 'ไม่ทราบสาเหตุ — ลองรีเฟรชหน้าเว็บแล้วลองใหม่'));
+  }
 }
 
 /* ===== ประวัติทั้งหมด (มุมมองผู้ดูแล) — กรองละเอียด + ดูรูปก่อน/หลัง + ส่งออก PDF ===== */
 const ADM_STATUS_OPTIONS = ['ทั้งหมด','รออนุมัติ','อนุมัติแล้ว','เกินกำหนด','คืนแล้ว','ปฏิเสธ'];
+const ADM_HISTORY_PAGE_SIZE = 15; // แสดงทีละ 15 รายการ กันหน้ายาวเกินไปเมื่อข้อมูลเยอะขึ้นเรื่อยๆ
+let admHistoryLimit = ADM_HISTORY_PAGE_SIZE;
 let ADM_STATE = { statusFilter: 'ทั้งหมด' };
 
 function initAdminHistoryFilters(){
@@ -790,12 +816,16 @@ function getFilteredAdminHistory(){
   });
 }
 
-function renderAdminHistory(){
+function renderAdminHistory(reset=true){
+  if(reset) admHistoryLimit = ADM_HISTORY_PAGE_SIZE;
   const list = getFilteredAdminHistory();
   const box = document.getElementById('adminHistoryList');
   if(!box) return;
   if(list.length===0){ box.innerHTML = '<div class="empty">ไม่พบรายการตามตัวกรองนี้</div>'; return; }
-  box.innerHTML = `<div class="hint" style="margin-bottom:8px;">พบ ${list.length} รายการ</div>` + list.map(r=>{
+  const shown = list.slice(0, admHistoryLimit);
+  const remaining = list.length - shown.length;
+  box.innerHTML = `<div class="hint" style="margin-bottom:8px;">พบ ${list.length} รายการ${remaining>0?` (แสดง ${shown.length} รายการแรก)`:''}</div>` +
+    shown.map(r=>{
     const overdue = isOverdue(r);
     return `
     <div class="ticket st-${r.Status} ${overdue?'overdue':''}">
@@ -815,7 +845,8 @@ function renderAdminHistory(){
       ${r.RejectReason?`<div class="hint" style="margin-top:6px;">เหตุผลที่ปฏิเสธ: ${escHtml(r.RejectReason)}</div>`:''}
       ${r.ReturnNote?`<div class="hint" style="margin-top:6px;">หมายเหตุตอนคืน: ${escHtml(r.ReturnNote)}</div>`:''}
     </div>`;
-  }).join('');
+  }).join('') +
+    (remaining>0 ? `<button class="ghost" style="width:100%; margin-top:8px;" onclick="admHistoryLimit+=${ADM_HISTORY_PAGE_SIZE}; renderAdminHistory(false);">แสดงเพิ่มเติม (เหลืออีก ${remaining} รายการ)</button>` : '');
 }
 
 async function exportPDF(){
@@ -955,12 +986,15 @@ async function saveSettings(){
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   const settingsPayload = { SiteName: siteName, AdminEmail: adminEmail };
   if(lineToken) settingsPayload.LineChannelAccessToken = lineToken; // ส่งเฉพาะตอนกรอกใหม่ ไม่งั้นเว้นว่างไว้จะไม่ไปลบ token เดิม
-  await apiPost('updateSettings', { settings: settingsPayload });
+  const pin = sessionStorage.getItem('adminPin');
+  const saveRes = await apiPost('updateSettings', { settings: settingsPayload, pin });
+  if(!saveRes.ok){ toast('บันทึกไม่สำเร็จ: '+saveRes.error); btn.disabled=false; btn.textContent='บันทึกการตั้งค่า'; return; }
   const logoFile = document.getElementById('set_logo').files[0];
   if(logoFile){
     const base64 = await compressImage(logoFile, 400, 0.85);
-    const res = await apiPost('updateLogo', {logo: base64});
+    const res = await apiPost('updateLogo', {logo: base64, pin});
     if(res.ok) STATE.settings.LogoURL = res.url;
+    else toast('อัปโหลดโลโก้ไม่สำเร็จ: '+res.error);
   }
   STATE.settings.SiteName = siteName;
   STATE.settings.AdminEmail = adminEmail;
