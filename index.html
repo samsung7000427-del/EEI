@@ -318,7 +318,7 @@
 /* ========= CONFIG =========
    วางลิงก์ Web app ที่ได้จาก Deploy ของ Google Apps Script ตรงนี้
 */
-const API_URL = 'https://script.google.com/macros/s/AKfycbzNUpVGqJ1TXA2vj1McvB_KyGj0DbdS9Baf9kJyCbEtBtzHkztqDUmh7GecO9JH-EI4/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbym0cJrvNfdS8pk0P1byIi4V49SjDoJg5eXjsdCFG5SbGhL3Z5FyJSgFBno1mJ-wXWZ/exec';
 const REQUESTS_CACHE_MS = 20000; // ไม่โหลดข้อมูลซ้ำถ้าเพิ่งโหลดไปไม่เกิน 20 วิ ทำให้สลับแท็บไปมาไวขึ้น
 
 let STATE = { settings:{}, tools:[], departments:[], requests:[], statusFilter:'ทั้งหมด', requestsLoadedAt:0 };
@@ -609,6 +609,7 @@ function renderTickets(){
         ${overdue?'<span class="badge overdue">เกินกำหนดคืน</span>':''}
       </div>
       ${photoTag(r.PhotoURL)}
+      ${r.RequestNote?`<div class="hint" style="margin-top:6px;">หมายเหตุ: ${escHtml(r.RequestNote)}</div>`:''}
       ${r.Status==='อนุมัติแล้ว'?`<div class="actions"><button class="ghost" onclick="openReturnModal('${r.ID}')">แจ้งคืนเครื่องมือ</button></div>`:''}
       ${r.Status==='ปฏิเสธ' && r.RejectReason?`<div class="hint">เหตุผล: ${escHtml(r.RejectReason)}</div>`:''}
       ${r.Status==='คืนแล้ว'?`<div class="hint">คืนเมื่อ: <span class="mono">${fmtDate(r.ReturnedAt)}</span> ${r.IsDamaged==='ใช่'?'<span class="badge" style="background:var(--red-soft); color:var(--red);">⚠️ ชำรุด/เสียหาย</span>':''}</div>`:''}
@@ -743,6 +744,7 @@ function renderPending(){
         ยืม <span class="mono">${fmtDate(r.BorrowDateTime)}</span> → คืน <span class="mono">${fmtDate(r.ExpectedReturnDateTime)}</span>
       </div>
       ${photoTag(r.PhotoURL)}
+      ${r.RequestNote?`<div class="hint" style="margin-top:6px;">หมายเหตุจากผู้ยืม: ${escHtml(r.RequestNote)}</div>`:''}
       <div class="actions">
         <button class="ghost" onclick="approveReq('${r.ID}')">อนุมัติ</button>
         <button class="ghost danger" onclick="rejectReq('${r.ID}')">ปฏิเสธ</button>
@@ -842,6 +844,7 @@ function renderAdminHistory(reset=true){
         ${r.IsDamaged==='ใช่'?'<span class="badge" style="background:var(--red-soft); color:var(--red);">⚠️ ชำรุด/เสียหาย</span>':''}
       </div>
       ${photoPairTag(r.PhotoURL, r.ReturnPhotoURL)}
+      ${r.RequestNote?`<div class="hint" style="margin-top:6px;">หมายเหตุตอนขอยืม: ${escHtml(r.RequestNote)}</div>`:''}
       ${r.RejectReason?`<div class="hint" style="margin-top:6px;">เหตุผลที่ปฏิเสธ: ${escHtml(r.RejectReason)}</div>`:''}
       ${r.ReturnNote?`<div class="hint" style="margin-top:6px;">หมายเหตุตอนคืน: ${escHtml(r.ReturnNote)}</div>`:''}
     </div>`;
@@ -853,18 +856,26 @@ async function exportPDF(){
   const ids = getFilteredAdminHistory().map(r=>r.ID);
   if(ids.length===0){ toast('ไม่มีข้อมูลให้ส่งออกตามตัวกรองนี้'); return; }
   toast('กำลังสร้าง PDF... รอสักครู่');
-  const res = await apiPost('exportPdf', {ids});
-  if(!res.ok){ toast('สร้าง PDF ไม่สำเร็จ: '+res.error); return; }
-  const byteChars = atob(res.pdfBase64);
-  const byteNumbers = new Array(byteChars.length);
-  for(let i=0;i<byteChars.length;i++) byteNumbers[i]=byteChars.charCodeAt(i);
-  const blob = new Blob([new Uint8Array(byteNumbers)], {type:'application/pdf'});
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = res.filename || 'รายงานยืม-คืนเครื่องมือ.pdf';
-  link.click();
-  URL.revokeObjectURL(link.href);
-  toast('ส่งออก PDF สำเร็จ');
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('exportPdf', {ids, pin});
+  if(!res.ok || !res.pdfBase64){
+    showNotifyResultModal('สร้าง PDF ไม่สำเร็จ\n\n' + (res.error || 'ไม่ได้รับไฟล์กลับมาจากเซิร์ฟเวอร์ (ไม่ทราบสาเหตุ)'));
+    return;
+  }
+  try{
+    const byteChars = atob(res.pdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for(let i=0;i<byteChars.length;i++) byteNumbers[i]=byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], {type:'application/pdf'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = res.filename || 'รายงานยืม-คืนเครื่องมือ.pdf';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast('ส่งออก PDF สำเร็จ');
+  } catch(err){
+    toast('แปลงไฟล์ PDF ไม่สำเร็จ: '+err);
+  }
 }
 
 /* จัดการรายการเครื่องมือ/แผนกแบบ optimistic: อัปเดตหน้าจอทันทีจากข้อมูลในเครื่อง
@@ -873,8 +884,8 @@ function renderToolAdminList(){
   document.getElementById('toolList').innerHTML = STATE.tools.map(t=>`
     <div class="listitem"><span>${escHtml(t)}</span>
     <span style="display:flex; gap:6px;">
-      <button class="ghost" onclick="showToolQR('${escAttr(t)}')">QR</button>
-      <button class="ghost danger" onclick="deleteTool('${escAttr(t)}')">ลบ</button>
+      <button class="ghost" onclick="showToolQR('${encodeURIComponent(t)}')">QR</button>
+      <button class="ghost danger" onclick="deleteTool('${encodeURIComponent(t)}')">ลบ</button>
     </span></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
 }
 async function addTool(){
@@ -885,14 +896,16 @@ async function addTool(){
   const res = await apiPost('addTool', {name:v});
   if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
 }
-async function deleteTool(name){
+async function deleteTool(encodedName){
+  const name = decodeURIComponent(encodedName);
   const pin = sessionStorage.getItem('adminPin');
   const res = await apiPost('deleteTool', {name, pin});
   if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
   STATE.tools = STATE.tools.filter(t=>t!==name);
   renderToolSelect(); renderToolAdminList();
 }
-function showToolQR(toolName){
+function showToolQR(encodedName){
+  const toolName = decodeURIComponent(encodedName);
   const url = `${location.origin}${location.pathname}?tool=${encodeURIComponent(toolName)}`;
   const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(url)}`;
   const bg = document.createElement('div');
@@ -911,7 +924,7 @@ function showToolQR(toolName){
 function renderDeptAdminList(){
   document.getElementById('deptList').innerHTML = STATE.departments.map(d=>`
     <div class="listitem"><span>${escHtml(d)}</span>
-    <button class="ghost danger" onclick="deleteDept('${escAttr(d)}')">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
+    <button class="ghost danger" onclick="deleteDept('${encodeURIComponent(d)}')">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
 }
 async function addDept(){
   const v = document.getElementById('newDept').value.trim();
@@ -921,7 +934,8 @@ async function addDept(){
   const res = await apiPost('addDepartment', {name:v});
   if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
 }
-async function deleteDept(name){
+async function deleteDept(encodedName){
+  const name = decodeURIComponent(encodedName);
   const pin = sessionStorage.getItem('adminPin');
   const res = await apiPost('deleteDepartment', {name, pin});
   if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
@@ -948,12 +962,13 @@ function renderSummaryReport(){
   const names = Object.keys(byName).sort((a,b)=> byName[b].overdue-byName[a].overdue || byName[b].total-byName[a].total);
   if(names.length===0){ box.innerHTML = '<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
   box.innerHTML = names.map(n=>`
-    <div class="listitem" style="cursor:pointer;" onclick="viewPersonHistory('${escAttr(n)}')">
+    <div class="listitem" style="cursor:pointer;" onclick="viewPersonHistory('${encodeURIComponent(n)}')">
       <span>${escHtml(n)}</span>
       <span class="hint mono">ยืมทั้งหมด ${byName[n].total} · คืนแล้ว ${byName[n].returned} ${byName[n].overdue?`· <span style="color:var(--red)">คืนช้า/เกินกำหนด ${byName[n].overdue}</span>`:''}</span>
     </div>`).join('');
 }
-function viewPersonHistory(name){
+function viewPersonHistory(encodedName){
+  const name = decodeURIComponent(encodedName);
   document.querySelector('.tab-btn[data-tab="status"]').click();
   document.getElementById('searchBox').value = name;
   STATE.statusFilter = 'ทั้งหมด';
@@ -963,9 +978,9 @@ function viewPersonHistory(name){
 /* ===== ส่งออก CSV ===== */
 function exportCSV(){
   if(STATE.requests.length===0){ toast('ยังไม่มีข้อมูลให้ส่งออก'); return; }
-  const headers = ['รหัส','วันที่ยื่นคำขอ','ผู้ยืม','แผนก','เครื่องมือ','วันเวลาที่ยืม','วันเวลาที่คาดว่าจะคืน','สถานะ','ผู้อนุมัติ','วันที่คืนจริง','หมายเหตุ'];
+  const headers = ['รหัส','วันที่ยื่นคำขอ','ผู้ยืม','แผนก','เครื่องมือ','วันเวลาที่ยืม','วันเวลาที่คาดว่าจะคืน','สถานะ','ผู้อนุมัติ','วันที่คืนจริง','หมายเหตุตอนยืม','หมายเหตุตอนคืน','ชำรุด/เสียหาย'];
   const rows = STATE.requests.map(r=>[r.ID, fmtDate(r.CreatedAt), r.Name, r.Department, r.ToolName,
-    fmtDate(r.BorrowDateTime), fmtDate(r.ExpectedReturnDateTime), r.Status, r.ApprovedBy||'', fmtDate(r.ReturnedAt), r.ReturnNote||'']);
+    fmtDate(r.BorrowDateTime), fmtDate(r.ExpectedReturnDateTime), r.Status, r.ApprovedBy||'', fmtDate(r.ReturnedAt), r.RequestNote||'', r.ReturnNote||'', r.IsDamaged==='ใช่'?'ใช่':'']);
   const csvBody = [headers, ...rows].map(row=>
     row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(',')
   ).join('\r\n');
