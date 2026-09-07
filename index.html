@@ -660,7 +660,7 @@ function openReturnModal(id){
   bg.innerHTML = `
     <div class="modal">
       <h3>แจ้งคืนเครื่องมือ</h3>
-      <label>รูปถ่ายสภาพตอนคืน (ถ้ามี)</label>
+      <label>รูปถ่ายสภาพตอนคืน<span class="req"> *</span></label>
       <input type="file" accept="image/*" capture="environment" id="returnPhotoInput">
       <label>หมายเหตุ (ถ้ามี)</label>
       <textarea id="returnNoteInput" rows="2" placeholder="เช่น สภาพเรียบร้อยดี หรือรายละเอียดความเสียหาย"></textarea>
@@ -676,10 +676,10 @@ function openReturnModal(id){
 }
 async function confirmReturn(){
   const file = document.getElementById('returnPhotoInput').files[0];
+  if(!file){ toast('กรุณาแนบรูปถ่ายสภาพตอนคืนก่อนยืนยัน'); return; }
   const note = document.getElementById('returnNoteInput').value.trim();
   const isDamaged = document.getElementById('returnDamagedInput').checked;
-  let returnPhoto = null;
-  if(file) returnPhoto = await compressImage(file);
+  const returnPhoto = await compressImage(file);
   const res = await apiPost('markReturned', { id: returnTargetId, returnPhoto, note, isDamaged });
   if(res.ok){ toast('บันทึกการคืนแล้ว'); document.getElementById('returnModalBg').remove(); loadRequests(true); }
   else toast('เกิดข้อผิดพลาด: '+res.error);
