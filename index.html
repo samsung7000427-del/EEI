@@ -3,1203 +3,1054 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daily Ops</title>
+<title>ระบบยืม-คืนเครื่องมือ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#14171A; --surface:#1C2024; --surface-2:#23282D; --surface-3:#2A3036;
-    --effort:#FF5A36; --effort-dim:#FF5A3630;
-    --recovery:#3DDC97; --recovery-dim:#3DDC9730;
-    --gold:#F2B705; --gold-dim:#F2B70525;
-    --danger:#FF3B3B; --danger-dim:#FF3B3B22;
-    --sleep:#8FA8FF;
-    --text:#F5F3EF; --text-dim:#9AA0A6; --text-faint:#5B6167; --border:#2C3238;
+    --bg:#F5F7F7;
+    --surface:#FFFFFF;
+    --ink:#1F2933;
+    --ink-muted:#64748B;
+    --border:#E2E8F0;
+    --accent:#0F766E;
+    --accent-dark:#0B5C56;
+    --accent-soft:#E6F5F3;
+    --amber:#B45309; --amber-soft:#FEF3C7;
+    --red:#B91C1C; --red-soft:#FEE2E2;
+    --slate:#475569; --slate-soft:#E2E8F0;
+    --radius:14px;
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;}
-  body{background:var(--bg); color:var(--text); font-family:'Sarabun',sans-serif; min-height:100vh; overflow-x:hidden; -webkit-font-smoothing:antialiased;}
-  #app{max-width:520px;margin:0 auto;padding:18px 14px 60px;}
-  h1,h2,h3{font-family:'Kanit',sans-serif; margin:0;}
-
-  .top-header{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:10px;}
-  .top-header h1{font-size:19px; font-weight:700;}
-  .top-header .sub{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
-  .top-actions{display:flex; gap:8px; align-items:center; flex-shrink:0;}
-  .streak-chip{display:flex; align-items:center; gap:5px; background:var(--gold-dim); border:1px solid #F2B70540; padding:8px 12px; border-radius:20px; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--gold); white-space:nowrap;}
-  .todaybtn{background:var(--effort); color:#fff; border:none; padding:9px 14px; border-radius:10px; font-family:'Kanit',sans-serif; font-weight:600; font-size:12.5px; cursor:pointer; white-space:nowrap;}
-  .iconbtn{width:38px;height:38px;border-radius:10px;background:var(--surface); display:flex;align-items:center;justify-content:center;border:1px solid var(--border); cursor:pointer; flex-shrink:0;}
-  .iconbtn:active{background:var(--surface-3);}
-  .iconbtn svg{width:17px;height:17px;stroke:var(--text-dim);}
-
-  .cal-wrap{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:14px 12px; margin-bottom:16px;}
-  .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; padding:0 2px;}
-  .cal-nav .navbtn{width:30px;height:30px;border-radius:9px;background:var(--surface-2); display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-dim); border:1px solid var(--border); font-size:16px; user-select:none;}
-  .cal-nav .navbtn:active{background:var(--surface-3);}
-  .cal-nav .label{font-family:'Kanit',sans-serif; font-weight:700; font-size:15px;}
-  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px;}
-  .cal-dow{text-align:center; font-size:9.5px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; padding-bottom:6px; font-weight:600;}
-  .cal-cell{min-height:58px; border-radius:9px; background:var(--surface-2); border:1px solid var(--border); padding:4px; cursor:pointer; display:flex; flex-direction:column; overflow:hidden;}
-  .cal-cell:active{background:var(--surface-3);}
-  .cal-cell.empty{visibility:hidden; cursor:default; min-height:0;}
-  .cal-cell.future{opacity:0.3; cursor:default;}
-  .cal-cell.today2{border-color:var(--effort); border-width:2px;}
-  .cal-daynum{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-dim); font-weight:600; margin-bottom:2px;}
-  .cal-cell.today2 .cal-daynum{color:var(--effort);}
-  .cell-line{font-size:8px; line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:1px;}
-  .cell-line.done{color:var(--recovery); text-decoration:line-through; opacity:0.75;}
-  .cell-line.missed{color:var(--danger);}
-  .cell-line.pending{color:var(--text-faint);}
-  .cell-line.warn{color:var(--gold);}
-  .cell-line.rest{color:var(--text-faint); font-style:italic;}
-  .cal-legend{display:flex; gap:11px; flex-wrap:wrap; margin-top:12px; font-size:9.5px; color:var(--text-dim);}
-  .cal-legend .lg{display:flex; align-items:center; gap:4px;}
-  .cal-legend .sw{width:8px;height:8px;border-radius:3px; flex-shrink:0;}
-
-  .section-title{font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-faint); margin:20px 0 10px 4px; font-family:'JetBrains Mono',monospace;}
-  .sum-tabs{display:flex; gap:6px; margin-bottom:12px;}
-  .sum-tab{flex:1; text-align:center; padding:8px; border-radius:10px; font-size:12px; background:var(--surface-2); color:var(--text-dim); cursor:pointer; border:1px solid var(--border);}
-  .sum-tab.active{background:var(--effort); color:#fff; border-color:var(--effort);}
-  .sum-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .sum-stat{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 14px;}
-  .sum-stat .n{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:20px;}
-  .sum-stat .l{font-size:11px; color:var(--text-dim); margin-top:2px;}
-
-  .tip{background:var(--gold-dim); border:1px solid #F2B70540; border-radius:16px; padding:14px 16px; display:flex; gap:12px; align-items:flex-start; margin-top:18px;}
-  .tip-icon{font-size:18px;}
-  .tip-text{font-size:13px; line-height:1.5; color:var(--text);}
-  .tip-text b{color:var(--gold);}
-
-  .card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:12px;}
-  .card.done{border-color:var(--recovery);}
-  .card-top{display:flex; align-items:center; justify-content:space-between; cursor:pointer;}
-  .card-left{display:flex; align-items:center; gap:12px; min-width:0;}
-  .qicon{width:36px;height:36px;border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; background:var(--surface-3); flex-shrink:0;}
-  .card.done .qicon{background:var(--recovery);}
-  .ctitle{font-family:'Kanit',sans-serif; font-weight:600; font-size:14.5px;}
-  .csub{font-size:11.5px; color:var(--text-dim); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .qcheck{width:23px;height:23px;border-radius:50%;border:2px solid var(--border); display:flex;align-items:center;justify-content:center; flex-shrink:0;}
-  .card.done .qcheck{background:var(--recovery); border-color:var(--recovery);}
-  .qform{max-height:0; overflow:hidden; transition:max-height .3s ease;}
-  .qform.open{max-height:2400px; margin-top:14px;}
-  .qform-inner{padding-top:12px; border-top:1px solid var(--border);}
-  .field-row{display:flex; gap:8px; margin-bottom:10px;}
-  .field{flex:1; min-width:0;}
-  .field label{font-size:11px; color:var(--text-dim); display:block; margin-bottom:5px;}
-  .field input{width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:10px 12px; border-radius:10px; font-size:16px; font-family:'JetBrains Mono',monospace; outline:none;}
-  .field input:focus{border-color:var(--effort);}
-  .btnrow{display:flex; gap:8px;}
-  .btn{flex:1; padding:11px; border-radius:10px; border:none; font-family:'Kanit',sans-serif; font-weight:600; font-size:14px; cursor:pointer;}
-  .btn:active{opacity:0.8;}
-  .btn-primary{background:var(--effort); color:#fff;}
-  .btn-ghost{background:var(--surface-3); color:var(--text-dim); flex:0 0 auto; padding:11px 16px;}
-  .rest-toggle{display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--surface-2); border-radius:10px; margin-bottom:10px; font-size:13px; color:var(--text-dim);}
-  .switch{width:38px;height:22px;border-radius:20px;background:var(--surface-3); position:relative; cursor:pointer; flex-shrink:0;}
-  .switch.on{background:var(--recovery);}
-  .switch::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:2px;left:2px;transition:left .15s;}
-  .switch.on::after{left:18px;}
-
-  .ex-row{background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px;}
-  .ex-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
-  .ex-name{font-family:'Kanit',sans-serif; font-weight:600; font-size:13px;}
-  .ex-target{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--gold); background:var(--gold-dim); padding:2px 8px; border-radius:20px; flex-shrink:0;}
-  .ex-sets{display:flex; gap:6px; flex-wrap:wrap;}
-  .ex-set{flex:1; min-width:44px;}
-  .ex-set label{display:block; font-size:9px; color:var(--text-faint); text-align:center; margin-bottom:3px; font-family:'JetBrains Mono',monospace;}
-  .ex-set input{width:100%; text-align:center; background:var(--surface-3); border:1px solid var(--border); color:var(--text); padding:8px 2px; border-radius:8px; font-size:16px; font-family:'JetBrains Mono',monospace; outline:none;}
-  .ex-set input:focus{border-color:var(--effort);}
-
-  .meal-item{display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px;}
-  .meal-name{flex:1; min-width:0; font-size:13px;}
-  .meal-name .mn{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .meal-macro{font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; margin-top:2px;}
-  .meal-cal{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; cursor:pointer; flex-shrink:0;}
-  .meal-del{width:26px;height:26px; border-radius:50%; background:var(--surface-3); display:flex; align-items:center; justify-content:center; color:var(--text-faint); flex-shrink:0; cursor:pointer; font-size:14px;}
-  .meal-edit-row{display:flex; gap:6px; margin-top:8px;}
-
-  .coach-card{background:linear-gradient(135deg, var(--surface) 0%, #1a1f22 100%); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:12px;}
-  .coach-head{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
-  .coach-avatar{width:34px;height:34px;border-radius:9px; background:var(--gold-dim); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;}
-
-  .mini-ring-row{display:flex; justify-content:center; gap:18px; margin-bottom:16px;}
-  .mini-ring{position:relative; width:56px; height:56px;}
-  .mini-ring svg{width:100%;height:100%;}
-  .mini-ring .lbl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:16px;}
-
-  .weight-row{display:flex; align-items:baseline; gap:8px; margin-bottom:10px;}
-  .weight-big{font-family:'JetBrains Mono',monospace; font-size:30px; font-weight:700;}
-  .weight-delta{font-family:'JetBrains Mono',monospace; font-size:13px; padding:3px 8px; border-radius:20px;}
-  .weight-delta.down{background:var(--recovery-dim); color:var(--recovery);}
-  .weight-delta.up{background:var(--effort-dim); color:var(--effort);}
-  .weight-delta.flat{background:var(--surface-3); color:var(--text-dim);}
-  .chart-wrap{width:100%; height:64px;}
-  .goal-track{height:10px; background:var(--surface-3); border-radius:8px; overflow:hidden;}
-  .goal-fill{height:100%; background:linear-gradient(90deg, var(--effort), var(--gold)); border-radius:8px; transition:width .4s ease;}
-  .goal-labels{display:flex; justify-content:space-between; font-size:11px; color:var(--text-faint); margin-top:6px; font-family:'JetBrains Mono',monospace;}
-  .bar-row{margin-bottom:12px;}
-  .bar-row:last-child{margin-bottom:0;}
-  .bar-top{display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;}
-  .bar-top .label{color:var(--text-dim);}
-  .bar-top .val{font-family:'JetBrains Mono',monospace; color:var(--text);}
-  .bar-track{height:8px; background:var(--surface-3); border-radius:6px; overflow:hidden;}
-  .bar-fill{height:100%; border-radius:6px; transition:width .4s ease;}
-
-  .overlay{position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(2px); display:none; align-items:flex-end; z-index:50;}
-  .overlay.show{display:flex;}
-  .modal{background:var(--bg); width:100%; max-width:520px; margin:0 auto; border-radius:20px 20px 0 0; padding:18px 16px 24px; max-height:92vh; overflow-y:auto; transform:translateY(100%); transition:transform .25s ease;}
-  .overlay.show .modal{transform:translateY(0);}
-  .modal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
-  .modal-title{font-family:'Kanit',sans-serif; font-weight:700; font-size:17px;}
-  .modal-close{width:30px;height:30px;border-radius:50%;background:var(--surface-2); display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-dim); font-size:16px; flex-shrink:0;}
-
-  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--surface-3); color:var(--text); padding:10px 18px; border-radius:30px; font-size:13px; opacity:0; transition:all .25s; z-index:60; pointer-events:none; border:1px solid var(--border); max-width:85%; text-align:center;}
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
-  .loading{display:flex; align-items:center; justify-content:center; min-height:80vh; color:var(--text-dim);}
-  ::selection{background:var(--effort); color:#fff;}
-
-  /* Exercise / food library */
-  .lib-tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:10px; margin-bottom:14px; -webkit-overflow-scrolling:touch;}
-  .lib-tabs::-webkit-scrollbar{display:none;}
-  .lib-tab{flex:0 0 auto; padding:8px 14px; border-radius:20px; font-size:12.5px; background:var(--surface-2); color:var(--text-dim); cursor:pointer; border:1px solid var(--border); white-space:nowrap;}
-  .lib-tab.active{background:var(--effort); color:#fff; border-color:var(--effort);}
-  .lib-ex-card{background:var(--surface-2); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:10px;}
-  .lib-ex-name{font-family:'Kanit',sans-serif; font-weight:600; font-size:14.5px; margin-bottom:6px;}
-  .lib-ex-tip{font-size:12px; color:var(--text-dim); line-height:1.6; display:flex; gap:6px; margin-bottom:3px;}
-  .lib-ex-tip:last-child{margin-bottom:0;}
-  .lib-ex-tip .bullet{color:var(--gold); flex-shrink:0;}
-  .lib-food-item{display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px;}
-  .lib-food-name{flex:1; min-width:0; font-size:13px; font-weight:600;}
-  .lib-food-cal{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--gold); flex-shrink:0; white-space:nowrap;}
-  .lib-food-add{width:30px;height:30px;border-radius:50%; background:var(--effort); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; flex-shrink:0;}
-  .lib-food-cat-title{font-size:11px; color:var(--text-faint); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:1px; margin:16px 0 8px 2px;}
-  .lib-food-cat-title:first-child{margin-top:0;}
-
-  /* ---------- Responsive scaling: tablet ---------- */
-  @media (min-width: 700px){
-    #app{max-width:680px; padding:28px 24px 60px;}
-    .top-header h1{font-size:23px;}
-    .top-header .sub{font-size:13px;}
-    .streak-chip{font-size:14px; padding:9px 14px;}
-    .todaybtn{font-size:14px; padding:11px 16px;}
-    .iconbtn{width:42px;height:42px;}
-    .iconbtn svg{width:19px;height:19px;}
-    .cal-wrap{padding:20px 18px; border-radius:24px;}
-    .cal-nav .label{font-size:17px;}
-    .cal-nav .navbtn{width:34px;height:34px; font-size:18px;}
-    .cal-dow{font-size:11px;}
-    .cal-cell{min-height:80px; border-radius:11px; padding:7px;}
-    .cal-daynum{font-size:13px;}
-    .cell-line{font-size:10.5px; line-height:1.5;}
-    .cal-legend{font-size:11px; gap:16px;}
-    .cal-legend .sw{width:9px;height:9px;}
-    .section-title{font-size:13px;}
-    .sum-stat .n{font-size:23px;}
-    .sum-stat .l{font-size:12px;}
-    .sum-stat{padding:16px 18px;}
-    .tip-text{font-size:14px;}
-    .ctitle{font-size:16px;}
-    .csub{font-size:12.5px;}
-    .field input{font-size:16px;}
-    .btn{font-size:15px;}
-    .mini-ring{width:66px; height:66px;}
-    .mini-ring .lbl{font-size:19px;}
-    .meal-name{font-size:14px;}
-    .meal-cal{font-size:16px;}
-    .coach-card{padding:20px;}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans Thai',sans-serif;
+    -webkit-font-smoothing:antialiased;
   }
-
-  /* ---------- Responsive scaling: desktop ---------- */
-  @media (min-width: 1024px){
-    body{display:flex; justify-content:center;}
-    #app{max-width:860px; padding:36px 32px 70px;}
-    .top-header h1{font-size:26px;}
-    .cal-wrap{padding:24px 22px;}
-    .cal-cell{min-height:96px; padding:9px;}
-    .cal-daynum{font-size:14px;}
-    .cell-line{font-size:11.5px;}
-    .cal-nav .label{font-size:19px;}
-    .sum-grid{grid-template-columns:repeat(4,1fr);}
-    .sum-stat .n{font-size:25px;}
-
-    /* Day-detail & settings become centered dialogs instead of mobile bottom sheets */
-    .overlay{align-items:center; padding:24px;}
-    .modal{border-radius:22px; max-width:560px; max-height:88vh; transform:translateY(16px) scale(0.98); opacity:0; transition:transform .2s ease, opacity .2s ease;}
-    .overlay.show .modal{transform:translateY(0) scale(1); opacity:1;}
-    .modal-title{font-size:19px;}
-    .ex-set input, .field input{font-size:16px;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  header{
+    position:sticky; top:0; z-index:20;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:14px 20px; display:flex; align-items:center; gap:12px;
   }
-
-  /* ---------- Very narrow phones: tighten calendar so nothing clips ---------- */
-  @media (max-width: 359px){
-    #app{padding:16px 10px 60px;}
-    .cal-grid{gap:2px;}
-    .cal-cell{min-height:52px; padding:3px;}
-    .cell-line{font-size:7.3px;}
-    .cal-daynum{font-size:9.5px;}
+  header img{height:36px; width:36px; object-fit:contain; border-radius:8px;}
+  header .logo-fallback{
+    height:36px; width:36px; border-radius:8px; background:var(--accent);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;
   }
+  header h1{font-size:16px; margin:0; font-weight:700; line-height:1.3;}
+  header .sub{font-size:11px; color:var(--ink-muted); font-family:'IBM Plex Mono',monospace;}
 
-  /* Hover affordances for pointer devices only (doesn't affect touch) */
-  @media (min-width:700px) and (hover:hover){
-    .cal-cell:hover{border-color:var(--effort);}
-    .todaybtn:hover, .btn:hover{opacity:0.9;}
+  nav{
+    display:flex; gap:6px; padding:10px 16px; background:var(--surface);
+    border-bottom:1px solid var(--border); position:sticky; top:65px; z-index:19;
+    overflow-x:auto;
   }
+  nav button{
+    border:none; background:transparent; padding:9px 14px; border-radius:999px;
+    font-family:inherit; font-size:13.5px; font-weight:600; color:var(--ink-muted);
+    cursor:pointer; white-space:nowrap; transition:.15s;
+  }
+  nav button.active{background:var(--accent); color:#fff;}
+  nav button:not(.active):hover{background:var(--bg);}
+
+  main{max-width:720px; margin:0 auto; padding:20px 16px 60px;}
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; margin-bottom:14px;
+  }
+  h2{font-size:15px; margin:0 0 14px; font-weight:700;}
+  label{display:block; font-size:13px; font-weight:600; margin:14px 0 6px; color:var(--ink);}
+  label .req{color:var(--red); margin-left:2px;}
+  input, select, textarea{
+    width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px;
+    font-family:inherit; font-size:14px; background:#FCFDFD; color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+  .hint{font-size:11.5px; color:var(--ink-muted); margin-top:4px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media(max-width:480px){.row2{grid-template-columns:1fr;}}
+
+  .photo-drop{
+    margin-top:8px; border:1.5px dashed var(--border); border-radius:12px; padding:16px;
+    text-align:center; cursor:pointer; background:#FCFDFD;
+  }
+  .photo-drop:hover{border-color:var(--accent);}
+  .photo-drop img{max-width:100%; max-height:220px; border-radius:8px; margin-top:8px;}
+  .photo-drop .ph{color:var(--ink-muted); font-size:13px;}
+
+  button.primary{
+    width:100%; margin-top:18px; padding:13px; border:none; border-radius:10px;
+    background:var(--accent); color:#fff; font-family:inherit; font-weight:700; font-size:14.5px;
+    cursor:pointer; transition:.15s;
+  }
+  button.primary:hover{background:var(--accent-dark);}
+  button.primary:disabled{background:#B8C4C2; cursor:not-allowed;}
+  button.ghost{
+    padding:8px 12px; border:1px solid var(--border); background:#fff; border-radius:8px;
+    font-family:inherit; font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer;
+  }
+  button.ghost:hover{border-color:var(--accent); color:var(--accent);}
+  button.danger{color:var(--red); border-color:var(--red-soft);}
+  button.danger:hover{border-color:var(--red); background:var(--red-soft);}
+
+  .searchbar{display:flex; gap:8px; margin-bottom:12px;}
+  .chips{display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px;}
+  .chip{
+    padding:7px 12px; border-radius:999px; border:1px solid var(--border); font-size:12.5px;
+    font-weight:600; white-space:nowrap; cursor:pointer; background:#fff; color:var(--ink-muted);
+  }
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  .ticket{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; margin-bottom:12px; position:relative; border-left:4px solid var(--border);
+  }
+  .ticket.overdue{border-left-color:var(--red);}
+  .ticket.st-รออนุมัติ{border-left-color:var(--amber);}
+  .ticket.st-อนุมัติแล้ว{border-left-color:var(--accent);}
+  .ticket.st-ปฏิเสธ{border-left-color:var(--red);}
+  .ticket.st-คืนแล้ว{border-left-color:var(--slate);}
+  .ticket .id{font-size:10.5px; color:var(--ink-muted);}
+  .ticket .toolname{font-weight:700; font-size:14.5px; margin:2px 0 6px;}
+  .ticket .meta{font-size:12.5px; color:var(--ink-muted); line-height:1.7;}
+  .badge{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px;
+  }
+  .badge.รออนุมัติ{background:var(--amber-soft); color:var(--amber);}
+  .badge.อนุมัติแล้ว{background:var(--accent-soft); color:var(--accent);}
+  .badge.ปฏิเสธ{background:var(--red-soft); color:var(--red);}
+  .badge.คืนแล้ว{background:var(--slate-soft); color:var(--slate);}
+  .badge.overdue{background:var(--red-soft); color:var(--red); margin-left:6px;}
+  .ticket .thumb{width:100%; max-height:150px; object-fit:cover; border-radius:8px; margin-top:8px; cursor:pointer;}
+  .ticket .actions{display:flex; gap:8px; margin-top:10px;}
+  .empty{text-align:center; padding:40px 10px; color:var(--ink-muted); font-size:13.5px;}
+
+  .pin-box{max-width:280px; margin:40px auto; text-align:center;}
+  .pin-box input{text-align:center; letter-spacing:6px; font-size:20px;}
+
+  .listitem{display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+  .listitem:last-child{border-bottom:none;}
+
+  .modal-bg{position:fixed; inset:0; background:rgba(31,41,51,.45); display:flex; align-items:flex-end; justify-content:center; z-index:50;}
+  @media(min-width:600px){.modal-bg{align-items:center;}}
+  .modal{background:#fff; border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:480px; max-height:85vh; overflow-y:auto;}
+  @media(min-width:600px){.modal{border-radius:16px;}}
+  .modal h3{margin:0 0 12px; font-size:15px;}
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+    padding:11px 20px; border-radius:999px; font-size:13px; z-index:100; opacity:0; transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+  .lightbox{position:fixed; inset:0; background:rgba(0,0,0,.85); display:flex; align-items:center; justify-content:center; z-index:60;}
+  .lightbox img{max-width:92%; max-height:88%; border-radius:8px;}
+  .tag-input-row{display:flex; gap:8px; margin-top:10px;}
+  .tag-input-row input{flex:1;}
+  .settings-preview{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .settings-preview img{height:44px; width:44px; object-fit:contain; border-radius:8px; border:1px solid var(--border);}
 </style>
 </head>
 <body>
-<div id="app"><div class="loading">กำลังโหลด...</div></div>
-<div class="toast" id="toast"></div>
 
-<div class="overlay" id="settingsOverlay" onclick="if(event.target===this)closeModal('settingsOverlay')">
-  <div class="modal">
-    <div class="modal-head"><div class="modal-title">ตั้งค่าโปรไฟล์</div><div class="modal-close" onclick="closeModal('settingsOverlay')">✕</div></div>
-    <div class="field-row">
-      <div class="field"><label>น้ำหนักเริ่มต้น (กก.)</label><input type="number" id="setStart" step="0.1" oninput="updateGoalsPreview()"></div>
-      <div class="field"><label>เป้าหมาย (กก.)</label><input type="number" id="setGoal" step="0.1"></div>
-    </div>
-    <div class="field-row">
-      <div class="field"><label>ส่วนสูง (ซม.)</label><input type="number" id="setHeight" oninput="updateGoalsPreview()"></div>
-      <div class="field"><label>อายุ</label><input type="number" id="setAge" oninput="updateGoalsPreview()"></div>
-    </div>
-    <div class="field" style="margin-bottom:12px;">
-      <label>ระดับกิจกรรม</label>
-      <select id="setActivity" onchange="updateGoalsPreview()">
-        <option value="1.375">น้อย — ออกกำลังกาย 1-3 วัน/สัปดาห์</option>
-        <option value="1.55">ปานกลาง — ออกกำลังกาย 3-5 วัน/สัปดาห์</option>
-        <option value="1.725">มาก — ออกกำลังกาย 6-7 วัน/สัปดาห์</option>
-      </select>
-    </div>
-    <div id="goalsPreview" style="background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:12.5px; color:var(--text-dim);"></div>
-    <div style="font-size:10.5px; color:var(--text-faint); margin:-8px 0 14px;">แคลอรี่และโปรตีนเป้าหมายคำนวณอัตโนมัติจากน้ำหนักล่าสุด ส่วนสูง อายุ และระดับกิจกรรม — จะอัปเดตทุกครั้งที่บันทึกน้ำหนักใหม่</div>
-    <div class="btnrow" style="margin-top:6px;">
-      <button class="btn btn-ghost" onclick="closeModal('settingsOverlay')">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveSettings()">บันทึก</button>
-    </div>
+<header>
+  <div id="logoWrap"><div class="logo-fallback" id="logoFallback">?</div></div>
+  <div>
+    <h1 id="siteTitle">ระบบยืม-คืนเครื่องมือ</h1>
+    <div class="sub">THAIEEI · Equipment Loan Log</div>
   </div>
-</div>
+</header>
 
-<div class="overlay" id="exerciseLibOverlay" style="z-index:60;" onclick="if(event.target===this)closeModal('exerciseLibOverlay')">
-  <div class="modal">
-    <div class="modal-head"><div class="modal-title">คลังท่าออกกำลังกาย</div><div class="modal-close" onclick="closeModal('exerciseLibOverlay')">✕</div></div>
-    <div id="exerciseLibBody"></div>
-  </div>
-</div>
+<nav>
+  <button class="tab-btn active" data-tab="form">ยื่นคำขอยืม</button>
+  <button class="tab-btn" data-tab="status">สถานะการยืม</button>
+  <button class="tab-btn" data-tab="admin">ผู้ดูแลระบบ</button>
+</nav>
 
-<div class="overlay" id="foodLibOverlay" style="z-index:60;" onclick="if(event.target===this)closeModal('foodLibOverlay')">
-  <div class="modal">
-    <div class="modal-head"><div class="modal-title">คลังอาหาร & แคลอรี่</div><div class="modal-close" onclick="closeModal('foodLibOverlay')">✕</div></div>
-    <div id="foodLibBody"></div>
-  </div>
-</div>
+<main>
 
-<div class="overlay" id="dayDetailOverlay" onclick="if(event.target===this)closeModal('dayDetailOverlay')">
-  <div class="modal">
-    <div class="modal-head"><div class="modal-title" id="dayDetailTitle">รายละเอียด</div><div class="modal-close" onclick="closeModal('dayDetailOverlay')">✕</div></div>
-    <div id="dayDetailBody"></div>
-  </div>
-</div>
+  <!-- ===== TAB: FORM ===== -->
+  <section id="tab-form">
+    <div class="card">
+      <h2>แบบฟอร์มขอยืมเครื่องมือ/อุปกรณ์</h2>
+      <form id="requestForm">
+        <label>ชื่อผู้ยืม<span class="req">*</span></label>
+        <input type="text" id="f_name" required placeholder="ชื่อ-นามสกุล">
+
+        <label>แผนก/กลุ่ม<span class="req">*</span></label>
+        <select id="f_department" required></select>
+        <input type="text" id="f_departmentCustom" placeholder="พิมพ์ชื่อแผนก/กลุ่มของคุณ" style="display:none; margin-top:8px;">
+        <div class="hint" id="f_departmentHint" style="display:none;">แผนกใหม่นี้จะถูกเพิ่มเข้าระบบให้อัตโนมัติ และจะเลือกได้ในครั้งถัดไป (การลบทำได้เฉพาะผู้ดูแลระบบเท่านั้น)</div>
+
+        <label>เครื่องมือที่ต้องการยืม<span class="req">*</span></label>
+        <select id="f_toolSelect" required></select>
+        <input type="text" id="f_toolCustom" placeholder="พิมพ์ชื่อเครื่องมือ" style="display:none; margin-top:8px;">
+
+        <div class="row2">
+          <div>
+            <label>วันเวลาที่ยืม<span class="req">*</span></label>
+            <input type="datetime-local" id="f_borrow" required>
+          </div>
+          <div>
+            <label>วันเวลาที่คาดว่าจะคืน<span class="req">*</span></label>
+            <input type="datetime-local" id="f_return" required>
+          </div>
+        </div>
+
+        <label>รูปถ่ายหลักฐาน (สภาพเครื่องมือก่อนยืม)<span class="req">*</span></label>
+        <div class="photo-drop" id="photoDrop">
+          <div id="photoPreviewArea"><span class="ph">แตะเพื่อถ่ายรูป/แนบรูป</span></div>
+          <input type="file" accept="image/*" capture="environment" id="f_photo" style="display:none;">
+        </div>
+
+        <label>หมายเหตุ (ถ้ามี)</label>
+        <textarea id="f_note" rows="2" placeholder="รายละเอียดเพิ่มเติม"></textarea>
+
+        <button type="submit" class="primary" id="submitBtn">ส่งคำขอยืม</button>
+        <div class="hint" style="margin-top:8px;">คำขอจะถูกส่งไปให้ผู้ดูแลระบบตรวจสอบและอนุมัติก่อน จึงจะถือว่ายืมได้จริง</div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== TAB: STATUS ===== -->
+  <section id="tab-status" style="display:none;">
+    <div class="searchbar">
+      <input type="text" id="searchBox" placeholder="ค้นหาชื่อ / แผนก / เครื่องมือ">
+      <button class="ghost" onclick="loadRequests()">รีเฟรช</button>
+    </div>
+    <div class="chips" id="statusChips"></div>
+    <div id="ticketList"></div>
+  </section>
+
+  <!-- ===== TAB: ADMIN ===== -->
+  <section id="tab-admin" style="display:none;">
+    <div id="pinGate" class="pin-box card">
+      <h2 style="text-align:center;">เข้าสู่โหมดผู้ดูแลระบบ</h2>
+      <input type="password" id="pinInput" inputmode="numeric" placeholder="••••" maxlength="8">
+      <button class="primary" onclick="checkPin()">ยืนยันรหัส</button>
+      <div class="hint" id="pinError" style="color:var(--red);"></div>
+    </div>
+
+    <div id="adminPanel" style="display:none;">
+      <div class="card">
+        <h2>รายการรออนุมัติ</h2>
+        <div id="pendingList"></div>
+      </div>
+
+      <div class="card">
+        <h2>ประวัติทั้งหมด (มุมมองผู้ดูแล)</h2>
+        <div class="hint" style="margin-bottom:8px;">ดูรูปหลักฐานทั้งก่อนยืมและหลังคืน พร้อมกรองข้อมูลเชิงลึกและส่งออกเป็น PDF</div>
+        <div class="row2">
+          <select id="adm_filterDept"><option value="">ทุกแผนก/กลุ่ม</option></select>
+          <select id="adm_filterTool"><option value="">ทุกเครื่องมือ</option></select>
+        </div>
+        <div class="row2" style="margin-top:10px;">
+          <div><label style="margin-top:0;">ตั้งแต่วันที่ยืม</label><input type="date" id="adm_dateFrom"></div>
+          <div><label style="margin-top:0;">ถึงวันที่ยืม</label><input type="date" id="adm_dateTo"></div>
+        </div>
+        <label>ค้นหาชื่อ/เครื่องมือ</label>
+        <input type="text" id="adm_search" placeholder="พิมพ์เพื่อค้นหา">
+        <div class="chips" id="adm_statusChips" style="margin-top:12px;"></div>
+        <div id="adminHistoryList"></div>
+        <button class="ghost" style="width:100%; margin-top:10px;" onclick="exportPDF()">ส่งออกรายการที่กรองไว้เป็น PDF</button>
+      </div>
+
+      <div class="card">
+        <h2>รายงานสรุปผู้ยืม</h2>
+        <div id="summaryReport"></div>
+        <button class="ghost" style="width:100%; margin-top:10px;" onclick="exportCSV()">ส่งออกรายงานทั้งหมดเป็น CSV (เปิดใน Excel ได้)</button>
+      </div>
+
+      <div class="card">
+        <h2>จัดการรายการเครื่องมือ</h2>
+        <div class="hint" style="margin-bottom:8px;">กดไอคอน QR เพื่อพิมพ์ติดไว้ที่ตัวเครื่องมือ สแกนแล้วเปิดฟอร์มพร้อมเลือกเครื่องมือนั้นให้อัตโนมัติ</div>
+        <div id="toolList"></div>
+        <div class="tag-input-row">
+          <input type="text" id="newTool" placeholder="เพิ่มชื่อเครื่องมือใหม่">
+          <button class="ghost" onclick="addTool()">เพิ่ม</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>จัดการแผนก/กลุ่ม</h2>
+        <div id="deptList"></div>
+        <div class="tag-input-row">
+          <input type="text" id="newDept" placeholder="เพิ่มแผนก/กลุ่มใหม่">
+          <button class="ghost" onclick="addDept()">เพิ่ม</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>ตั้งค่าเว็บไซต์</h2>
+        <label>ชื่อเว็บไซต์ / หน่วยงาน</label>
+        <input type="text" id="set_siteName">
+        <label>โลโก้</label>
+        <div class="settings-preview">
+          <img id="logoPreview" style="display:none;">
+          <span class="hint" id="logoHint">ยังไม่มีโลโก้</span>
+        </div>
+        <input type="file" accept="image/*" id="set_logo">
+        <label>อีเมลผู้ดูแล (รับแจ้งเตือนคำขอใหม่ / ใกล้-เกินกำหนดคืน)</label>
+        <input type="email" id="set_adminEmail" placeholder="admin@example.com">
+        <div class="hint">เว้นว่างได้ถ้าไม่ต้องการรับอีเมลแจ้งเตือน</div>
+
+        <label>LINE Channel Access Token (แจ้งเตือนผ่าน LINE OA)</label>
+        <input type="password" id="set_lineToken" placeholder="วาง Channel access token ที่นี่">
+        <div class="hint" id="lineStatusHint">ยังไม่ได้ตั้งค่า</div>
+        <div class="hint">
+          วิธีได้ token: สร้าง LINE Official Account ฟรีที่ <span class="mono">manager.line.biz</span> แล้วเปิดใช้ Messaging API
+          ในเมนู การตั้งค่า &gt; Messaging API จากนั้นกด Issue ที่ช่อง "Channel access token" แล้วคัดลอกมาวางที่นี่
+          สุดท้ายให้ผู้ดูแลทุกคนสแกน QR ของ OA นั้นเพื่อแอดเป็นเพื่อนไว้ก่อน จึงจะได้รับข้อความแจ้งเตือน (LINE Notify เดิมปิดให้บริการไปแล้ว จึงต้องใช้วิธีนี้แทน)
+        </div>
+        <button class="ghost" style="width:100%; margin-top:8px;" onclick="saveSettingsThenTest()">บันทึกแล้วส่งข้อความทดสอบ</button>
+
+        <button class="primary" id="saveSettingsBtn" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+      </div>
+
+      <button class="ghost" style="width:100%;" onclick="logoutAdmin()">ออกจากโหมดผู้ดูแลระบบ</button>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast"></div>
 
 <script>
-const TIPS = [
-  "งานวิจัยพบว่าคนที่ &lt;b&gt;บันทึกน้ำหนักทุกวัน&lt;/b&gt; มีโอกาสรักษาผลลัพธ์ระยะยาวได้มากกว่าคนที่ไม่บันทึกถึง 2 เท่า",
-  "ไม่ต้องสมบูรณ์แบบทุกวัน แค่ &lt;b&gt;อย่าพลาด 2 วันติดกัน&lt;/b&gt; — กฎง่ายๆ ที่รักษาความสม่ำเสมอได้ดีที่สุด",
-  "โปรตีนเพียงพอทุกมื้อ = &lt;b&gt;กล้ามเนื้อไม่หาย&lt;/b&gt; แม้ตอนขาดดุลแคลอรี่ ให้ความสำคัญกับมันเป็นอันดับแรก",
-  "น้ำหนักขึ้นลง 0.5-1 กก. ในหนึ่งวันเป็นเรื่องปกติ — &lt;b&gt;ดูเทรนด์รายสัปดาห์&lt;/b&gt; ไม่ใช่ตัวเลขวันเดียว",
-  "ความสม่ำเสมอชนะความสมบูรณ์แบบ — ทำได้ 80% ทุกวัน ดีกว่าทำ 100% แค่บางวัน",
-  "นอนน้อยกว่า 6 ชม. ทำให้ระดับฮอร์โมนหิวสูงขึ้น — &lt;b&gt;นอนให้พอ&lt;/b&gt; คือส่วนหนึ่งของโปรแกรมนี้",
-  "Progressive overload คือกุญแจ — พยายาม &lt;b&gt;เพิ่มจำนวนครั้งทีละนิด&lt;/b&gt; ทุก 1-2 สัปดาห์"
-];
+/* ========= CONFIG =========
+   วางลิงก์ Web app ที่ได้จาก Deploy ของ Google Apps Script ตรงนี้
+*/
+const API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+const REQUESTS_CACHE_MS = 20000; // ไม่โหลดข้อมูลซ้ำถ้าเพิ่งโหลดไปไม่เกิน 20 วิ ทำให้สลับแท็บไปมาไวขึ้น
 
-const WORKOUT_PLAN = {
-  1: { label:"อก + ไทรเซ็ป", short:"อก+ไทร", exercises:[
-      {name:"Bench Press", sets:4, target:8, type:"reps"},
-      {name:"Incline Dumbbell Press", sets:3, target:10, type:"reps"},
-      {name:"Cable Fly", sets:3, target:12, type:"reps"},
-      {name:"Dips", sets:3, target:8, type:"reps"},
-      {name:"Triceps Pushdown", sets:3, target:12, type:"reps"}
-  ]},
-  2: { label:"คาร์ดิโอ HIIT + คอร์", short:"คาร์ดิโอ", exercises:[
-      {name:"HIIT Cardio", sets:1, target:20, type:"minutes"},
-      {name:"Plank", sets:3, target:45, type:"seconds"}
-  ]},
-  3: { label:"หลัง + ไบเซ็ป", short:"หลัง+ไบ", exercises:[
-      {name:"Lat Pulldown", sets:4, target:8, type:"reps"},
-      {name:"Barbell Row", sets:4, target:10, type:"reps"},
-      {name:"Pull-up", sets:3, target:8, type:"reps"},
-      {name:"Seated Cable Row", sets:3, target:12, type:"reps"},
-      {name:"Barbell Curl", sets:3, target:10, type:"reps"}
-  ]},
-  4: { label:"ขา + ก้น", short:"ขา+ก้น", exercises:[
-      {name:"Squat", sets:4, target:8, type:"reps"},
-      {name:"Romanian Deadlift", sets:3, target:10, type:"reps"},
-      {name:"Leg Press", sets:3, target:12, type:"reps"},
-      {name:"Walking Lunges", sets:3, target:12, type:"reps"},
-      {name:"Calf Raise", sets:4, target:15, type:"reps"}
-  ]},
-  5: { label:"ไหล่ + คอร์", short:"ไหล่", exercises:[
-      {name:"Overhead Press", sets:4, target:8, type:"reps"},
-      {name:"Lateral Raise", sets:3, target:12, type:"reps"},
-      {name:"Face Pull", sets:3, target:15, type:"reps"},
-      {name:"Hanging Leg Raise", sets:3, target:12, type:"reps"}
-  ]},
-  6: { label:"คาร์ดิโอต่อเนื่อง", short:"คาร์ดิโอ", exercises:[
-      {name:"วิ่ง / ปั่นจักรยาน", sets:1, target:35, type:"minutes"}
-  ]},
-  0: { label:"พักผ่อน", short:"พัก", exercises:[] }
-};
-const unitLabel = {reps:"ครั้ง", minutes:"นาที", seconds:"วิ"};
-const PLAN_TO_LIBCAT = {1:"อก", 2:"คาร์ดิโอ", 3:"หลัง", 4:"ขา", 5:"ไหล่", 6:"คาร์ดิโอ", 0:"คอร์"};
+let STATE = { settings:{}, tools:[], departments:[], requests:[], statusFilter:'ทั้งหมด', requestsLoadedAt:0 };
 
-/* Exercise reference library — browsable by category, independent of the day's assigned plan */
-const EXERCISE_LIBRARY = {
-  "อก": [
-    {name:"Bench Press (บาร์เบล)", tips:["นอนราบ เท้าแนบพื้น สะบักหุบเข้าหากัน","ลดบาร์ลงแตะหน้าอกช้าๆ แล้วดันขึ้นจนแขนเกือบเหยียดสุด","อย่ากระดกก้นลอยจากม้านั่ง"]},
-    {name:"Incline Dumbbell Press", tips:["ปรับม้านั่งเอียง 30-45 องศา","ดันดัมเบลขึ้นแล้วบีบกล้ามอกช่วงบนตอนสุดท่า","ควบคุมจังหวะลง ไม่ปล่อยตก"]},
-    {name:"Push-up (วิดพื้น)", tips:["มือกว้างกว่าไหล่เล็กน้อย ลำตัวเป็นเส้นตรง","ลดตัวจนอกเกือบแตะพื้น แล้วดันขึ้น","เกร็งหน้าท้องตลอดท่าอย่าให้สะโพกตก"]},
-    {name:"Cable Fly", tips:["ยืนกลางเครื่อง แขนโค้งเล็กน้อยตลอดท่า","ดึงมือทั้งสองมาบรรจบกลางลำตัวแบบโอบกอด","อย่าใช้แรงเหวี่ยงหรือดึงเร็วเกินไป"]},
-    {name:"Dips (หน้าอก/ไทรเซป)", tips:["โน้มตัวไปข้างหน้าเล็กน้อยเพื่อเน้นหน้าอก","ลดตัวจนไหล่ต่ำกว่าข้อศอกเล็กน้อย","อย่าลดต่ำเกินไปจนไหล่บาดเจ็บ"]},
-    {name:"Chest Press Machine", tips:["ปรับเบาะให้ด้ามจับอยู่ระดับหน้าอก","ดันออกช้าๆ ไม่ล็อกข้อศอกสุด","เหมาะสำหรับมือใหม่ที่ยังคุมฟอร์มไม่มั่นคง"]}
-  ],
-  "หลัง": [
-    {name:"Lat Pulldown", tips:["จับบาร์กว้างกว่าหัวไหล่เล็กน้อย","ดึงลงมาหาหน้าอกบน อกยื่นออก","อย่าเอนตัวไปข้างหลังมากเกินไป"]},
-    {name:"Barbell Row", tips:["ก้มตัวทำมุมประมาณ 45 องศา หลังตรง","ดึงบาร์เข้าหาท้องน้อย บีบสะบัก","งอเข่าเล็กน้อยเพื่อลดแรงกดหลังล่าง"]},
-    {name:"Pull-up (ดึงข้อ)", tips:["จับบาร์กว้างกว่าไหล่ ห้อยตัวเต็มที่ก่อนเริ่ม","ดึงตัวขึ้นจนคางพ้นบาร์","ควบคุมจังหวะลง ไม่ปล่อยตัวร่วง"]},
-    {name:"Seated Cable Row", tips:["นั่งหลังตรง เข่างอเล็กน้อย","ดึงมือจับเข้าหาท้อง บีบสะบักค้างไว้","อย่าโยกตัวหน้า-หลังแรงเกินไป"]},
-    {name:"Deadlift", tips:["บาร์อยู่ชิดหน้าแข้ง หลังตรงตลอดท่า","ดันสะโพกขึ้นพร้อมยกบาร์ ไม่ก้มหลังงอ","เริ่มจากน้ำหนักเบาเพื่อฝึกฟอร์มก่อน"]},
-    {name:"T-Bar Row", tips:["ยืนคร่อมบาร์ ก้มตัวหลังตรง","ดึงเข้าหาลำตัวส่วนล่าง บีบสะบัก","เหมาะเสริมความหนาให้แผ่นหลัง"]}
-  ],
-  "ขา": [
-    {name:"Squat", tips:["เท้ากว้างเท่าไหล่ ปลายเท้าแยกเล็กน้อย","ย่อลงเหมือนนั่งเก้าอี้ เข่าไม่บิดเข้าใน","หลังตรงตลอดท่า อกยื่นเล็กน้อย"]},
-    {name:"Romanian Deadlift", tips:["เข่างอเล็กน้อยคงที่ตลอดท่า","ดันสะโพกไปข้างหลัง หลังตรง บาร์ชิดขา","รู้สึกตึงที่ต้นขาหลังก่อนดันกลับขึ้น"]},
-    {name:"Leg Press", tips:["วางเท้ากว้างเท่าไหล่บนแผ่นดัน","ลดน้ำหนักลงจนเข่าทำมุมประมาณ 90 องศา","อย่าล็อกเข่าสุดตอนดันขึ้น"]},
-    {name:"Walking Lunges", tips:["ก้าวยาวพอควร ย่อลงจนเข่าหลังเกือบแตะพื้น","ลำตัวตั้งตรง ไม่โน้มไปข้างหน้า","สลับขาก้าวต่อเนื่อง"]},
-    {name:"Calf Raise", tips:["ยืนปลายเท้าบนขอบแท่น เขย่งขึ้นสุด","ค้างไว้ 1 วินาทีตรงจุดสูงสุด","ลดลงช้าๆ ให้ส้นเท้าต่ำกว่าระดับแท่น"]},
-    {name:"Leg Extension", tips:["นั่งพิงพนักเต็มหลัง ปรับเบาะให้เข่าตรงจุดหมุน","เหยียดขาขึ้นจนเกือบสุด ไม่ล็อกเข่าแรง","เหมาะเป็นท่าเสริมท้ายเซสชันขา"]}
-  ],
-  "ไหล่": [
-    {name:"Overhead Press", tips:["ยืนแกนกลางลำตัวมั่นคง เกร็งหน้าท้อง","ดันบาร์ขึ้นตรงศีรษะ ไม่แอ่นหลังมากเกินไป","ลดลงควบคุมจนบาร์เกือบแตะไหล่"]},
-    {name:"Lateral Raise", tips:["ยืนตัวตรง ดัมเบลข้างลำตัว","ยกแขนออกด้านข้างจนขนานพื้น งอศอกเล็กน้อย","อย่าใช้แรงเหวี่ยงลำตัวช่วย"]},
-    {name:"Face Pull", tips:["ดึงเชือกเข้าหาใบหน้า ศอกสูงระดับไหล่","บีบสะบักตอนดึงสุด","ช่วยเสริมไหล่หลังและท่าทาง"]},
-    {name:"Front Raise", tips:["ยกดัมเบลขึ้นด้านหน้าจนระดับไหล่","ควบคุมจังหวะทั้งขึ้นและลง","ไม่แกว่งลำตัวช่วยยก"]},
-    {name:"Arnold Press", tips:["เริ่มจากฝ่ามือหันเข้าหาตัว","หมุนข้อมือพร้อมดันขึ้นจนฝ่ามือหันออก","เคลื่อนไหวช้าๆ เพื่อคุมกล้ามเนื้อรอบข้าง"]}
-  ],
-  "แขน": [
-    {name:"Barbell Curl", tips:["ยืนตรง ศอกแนบลำตัวตลอดท่า","งอศอกยกบาร์ขึ้นโดยไม่แกว่งลำตัว","ลดลงช้าๆ ควบคุมน้ำหนัก"]},
-    {name:"Hammer Curl", tips:["จับดัมเบลแบบฝ่ามือหันเข้าหาลำตัว","งอศอกยกขึ้นโดยข้อมือนิ่ง","เน้นกล้ามแขนด้านนอกและปลายแขน"]},
-    {name:"Triceps Pushdown", tips:["ศอกแนบลำตัว ยืนตัวตรง","ดันบาร์ลงจนแขนเหยียดสุด บีบไทรเซปค้าง","อย่าใช้ไหล่ช่วยดัน"]},
-    {name:"Overhead Triceps Extension", tips:["ยกดัมเบลเหนือศีรษะ ศอกชี้ขึ้นตรง","ลดลงด้านหลังศีรษะช้าๆ","เหยียดแขนกลับขึ้นโดยศอกนิ่ง"]},
-    {name:"Skull Crusher", tips:["นอนราบ บาร์เริ่มเหนือหน้าผาก","งอศอกลดบาร์ลงใกล้หน้าผาก ศอกนิ่ง","เหยียดกลับขึ้นโดยไม่ขยับต้นแขน"]},
-    {name:"Preacher Curl", tips:["วางต้นแขนแนบเบาะพยุง","งอศอกยกขึ้นเต็มช่วง ควบคุมจังหวะลง","ช่วยตัดการโกงจากไหล่ได้ดี"]}
-  ],
-  "คอร์": [
-    {name:"Plank", tips:["ศอกอยู่ใต้ไหล่พอดี ลำตัวเป็นเส้นตรง","เกร็งหน้าท้องและก้นตลอดท่า","อย่าให้สะโพกยกสูงหรือตกต่ำ"]},
-    {name:"Hanging Leg Raise", tips:["ห้อยตัวจากบาร์ แขนเหยียดตรง","ยกขาขึ้นจนตั้งฉากหรือสูงกว่า ควบคุมไม่แกว่ง","ลดขาลงช้าๆ ไม่ปล่อยตกเร็ว"]},
-    {name:"Cable Crunch", tips:["คุกเข่าหน้าเครื่องเคเบิล จับเชือกข้างศีรษะ","งอตัวลงโดยใช้หน้าท้องดึง ไม่ใช้แขนดึง","สะโพกอยู่นิ่งตลอดท่า"]},
-    {name:"Russian Twist", tips:["นั่งเอนตัวเล็กน้อย ยกเท้าลอยหรือแตะพื้นก็ได้","หมุนลำตัวไปด้านข้างสลับซ้าย-ขวา","คุมจังหวะ ไม่เหวี่ยงแรงเกินไป"]}
-  ],
-  "คาร์ดิโอ": [
-    {name:"วิ่ง (Running)", tips:["วอร์มอัพเดินเร็ว 5 นาทีก่อนวิ่ง","รักษาจังหวะหายใจสม่ำเสมอ","คูลดาวน์เดินช้าๆ หลังวิ่งเสร็จ"]},
-    {name:"ปั่นจักรยาน (Cycling)", tips:["ปรับเบาะสูงพอดีเข่าไม่งอมากเกินไป","รักษาจังหวะปั่นสม่ำเสมอตลอดช่วง","เพิ่มแรงต้านทีละน้อยเมื่อฟิตขึ้น"]},
-    {name:"HIIT Cardio", tips:["สลับช่วงหนัก 30-40 วิ กับพัก 20-30 วิ","เลือกท่าที่ถนัด เช่น เบิร์ปี้ วิ่งอยู่กับที่ยกเข่าสูง","วอร์มอัพให้ทั่วก่อนเริ่มช่วงหนัก"]},
-    {name:"กระโดดเชือก (Jump Rope)", tips:["กระโดดเบาๆ ด้วยข้อเท้า ไม่ใช่เข่า","มือควบคุมเชือกอยู่ระดับสะโพก","เริ่มจากช่วงสั้นๆ แล้วค่อยเพิ่มเวลา"]},
-    {name:"Rowing Machine", tips:["ดันด้วยขาก่อน แล้วดึงด้วยแขนตามลำดับ","หลังตรงตลอดจังหวะ ไม่โก่งหลัง","จังหวะกลับควบคุมช้ากว่าจังหวะดึง"]}
-  ]
-};
-
-/* Food reference library — static rough estimates per typical serving, browsable to help decide what to eat */
-const FOOD_LIBRARY = {
-  "อาหารจานเดียว": [
-    {name:"ส้มตำไทย", calories:120, protein:4},
-    {name:"ต้มยำกุ้ง (น้ำใส)", calories:220, protein:20},
-    {name:"แกงเขียวหวานไก่ + ข้าว", calories:650, protein:28},
-    {name:"ข้าวมันไก่", calories:600, protein:25},
-    {name:"ผัดกะเพราไก่ไข่ดาว", calories:650, protein:30},
-    {name:"ข้าวผัดกุ้ง", calories:550, protein:22},
-    {name:"ข้าวหน้าเป็ด", calories:600, protein:26},
-    {name:"ข้าวขาหมู", calories:750, protein:30}
-  ],
-  "เส้น/ก๋วยเตี๋ยว": [
-    {name:"ก๋วยเตี๋ยวน้ำใส หมู", calories:350, protein:18},
-    {name:"ก๋วยเตี๋ยวเรือ (2 ชาม)", calories:450, protein:20},
-    {name:"ผัดไทยกุ้งสด", calories:600, protein:24},
-    {name:"ผัดซีอิ๊วหมู", calories:650, protein:22},
-    {name:"บะหมี่เกี๊ยวหมูแดง", calories:450, protein:24}
-  ],
-  "ของทอด/ของว่าง": [
-    {name:"ไก่ทอด (2 ชิ้น)", calories:400, protein:28},
-    {name:"ปอเปี๊ยะทอด (5 ชิ้น)", calories:300, protein:6},
-    {name:"กล้วยแขก", calories:250, protein:2},
-    {name:"มันฝรั่งทอด (ถุงเล็ก)", calories:280, protein:3}
-  ],
-  "เพื่อสุขภาพ / โปรตีนสูง": [
-    {name:"อกไก่ย่าง 150g + ผักลวก", calories:280, protein:45},
-    {name:"สลัดอกไก่ย่าง (น้ำสลัดน้อย)", calories:320, protein:35},
-    {name:"ไข่ต้ม 2 ฟอง", calories:155, protein:13},
-    {name:"ปลานึ่งมะนาว + ข้าวกล้อง", calories:400, protein:35},
-    {name:"เต้าหู้ผัดผัก", calories:280, protein:16},
-    {name:"โปรตีนเชค (เวย์ 1 สกู๊ป + นม)", calories:200, protein:30}
-  ],
-  "ของหวาน": [
-    {name:"ข้าวเหนียวมะม่วง", calories:450, protein:5},
-    {name:"บัวลอย", calories:300, protein:3},
-    {name:"เค้กช็อกโกแลต (1 ชิ้น)", calories:400, protein:5},
-    {name:"ไอศกรีม 1 สกู๊ป", calories:150, protein:2}
-  ],
-  "เครื่องดื่ม": [
-    {name:"กาแฟดำ (ไม่ใส่น้ำตาล)", calories:5, protein:0},
-    {name:"ชาไทยใส่นม", calories:200, protein:2},
-    {name:"น้ำอัดลม (1 กระป๋อง)", calories:140, protein:0},
-    {name:"นมจืด (1 แก้ว)", calories:130, protein:8},
-    {name:"น้ำผลไม้ปั่น", calories:180, protein:1}
-  ]
-};
-
-function isoLocal(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
-function todayStr(offset=0){ const d=new Date(); d.setDate(d.getDate()+offset); return isoLocal(d); }
-function fmtDateTH(iso){
-  const days=["อา","จ","อ","พ","พฤ","ศ","ส"];
-  const months=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-  const d=new Date(iso+"T00:00:00");
-  return `วัน${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
 }
-function esc(str){ return String(str).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-let DATA = null;
-const STORE_KEY = "dailyops-v2";
-let activeDate = null;
-let openForm = null;
-let calMonthOffset = 0;
-let summaryRange = 30;
-let editingMealId = null;
-
-async function loadData(){
+async function apiGet(action, params={}){
   try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(!raw) throw new Error("no saved data yet");
-    DATA = JSON.parse(raw);
-  }catch(e){
-    DATA = { profile:{startWeight:93, goalWeight:85, height:185, age:22, activityMultiplier:1.55, calorieGoal:2550, proteinGoal:190}, days:{} };
+    const usp = new URLSearchParams({action, ...params});
+    const res = await fetch(`${API_URL}?${usp.toString()}`);
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch(e){ return { ok:false, error: 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ข้อมูลที่ถูกต้อง (มักเกิดจาก Deploy เวอร์ชันใหม่ยังไม่มีผล หรือสิทธิ์เข้าถึงเว็บแอปตั้งไว้ไม่ถูกต้อง)' }; }
+  } catch(err){
+    return { ok:false, error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+err };
   }
-  if(!DATA.days) DATA.days = {};
-  if(!DATA.profile) DATA.profile = {startWeight:93, goalWeight:85, height:185, age:22, activityMultiplier:1.55, calorieGoal:2550, proteinGoal:190};
-  if(!DATA.profile.height) DATA.profile.height = 185;
-  if(!DATA.profile.age) DATA.profile.age = 22;
-  if(!DATA.profile.activityMultiplier) DATA.profile.activityMultiplier = 1.55;
 }
-let saveTimer=null;
-function persist(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
-    try{ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); }
-    catch(e){ console.error("save failed", e); showToast("บันทึกไม่สำเร็จ — พื้นที่จัดเก็บอาจเต็ม"); }
-  }, 250);
-}
-function getDay(iso){
-  if(!DATA.days[iso]) DATA.days[iso] = {weight:null, waist:null, restDay:false, workoutSubmitted:false, exerciseLog:{}, meals:[], sleepHours:null};
-  const d = DATA.days[iso];
-  if(!d.exerciseLog) d.exerciseLog = {};
-  if(!d.meals) d.meals = [];
-  return d;
-}
-
-function planFor(iso){ return WORKOUT_PLAN[new Date(iso+'T00:00:00').getDay()]; }
-
-// Progressive overload — auto-raises an exercise's target once the base target has been
-// hit on 2 consecutive weekly occurrences. Purely computed from logged history each call
-// (nothing stored/mutated), so backfilling or correcting a past entry recalculates cleanly
-// with no drift.
-const PROGRESSION_STEP = {reps:1, minutes:2, seconds:5};
-function hitsTarget(sets, target){
-  return !!(sets && sets.length && sets.every(v=>v>=target));
-}
-function computeCurrentTarget(dow, i, beforeIso){
-  const ex = WORKOUT_PLAN[dow].exercises[i];
-  const step = PROGRESSION_STEP[ex.type] || 1;
-  // Walk this exercise's past occurrences (same weekday, strictly before the day being
-  // viewed) oldest-to-newest, simulating the target as it would have moved over time —
-  // each occurrence is checked against whatever the target actually was at that point,
-  // not the flat original base (otherwise one lucky week above base would grant free
-  // bumps forever). A miss pauses progression but never claws back an earned bump.
-  const occ = Object.keys(DATA.days)
-    .filter(iso => iso < beforeIso && new Date(iso+'T00:00:00').getDay()===dow)
-    .sort()
-    .map(iso => DATA.days[iso].exerciseLog && DATA.days[iso].exerciseLog[i])
-    .filter(sets => sets && sets.length);
-  let target = ex.target;
-  let consecutiveHits = 0;
-  for(const sets of occ){
-    if(hitsTarget(sets, target)){
-      consecutiveHits++;
-      if(consecutiveHits % 2 === 0 && (consecutiveHits/2) <= 20) target += step; // sane ceiling
-    } else {
-      consecutiveHits = 0;
-    }
-  }
-  return {target, streak: consecutiveHits % 2};
-}
-function isoPlusOne(iso){ const dt=new Date(iso+'T00:00:00'); dt.setDate(dt.getDate()+1); return isoLocal(dt); }
-
-function workoutDoneFlag(d){ return !!(d.restDay || d.workoutSubmitted || d.workoutDone || (d.customExercises && d.customExercises.length>0)); }
-function caloriesTotal(d){
-  if(d.meals && d.meals.length) return d.meals.filter(m=>!m.pending).reduce((s,m)=>s+(m.calories||0),0);
-  return d.calories!=null ? d.calories : null;
-}
-function proteinTotal(d){
-  if(d.meals && d.meals.length) return d.meals.filter(m=>!m.pending).reduce((s,m)=>s+(m.protein||0),0);
-  return d.protein!=null ? d.protein : null;
-}
-function mealsLogged(d){ return (d.meals && d.meals.some(m=>!m.pending)) || d.calories!=null; }
-function isDayComplete(d){ return !!(d.weight!=null && workoutDoneFlag(d) && mealsLogged(d)); }
-function completionCount(d){ let n=0; if(d.weight!=null)n++; if(workoutDoneFlag(d))n++; if(mealsLogged(d))n++; return n; }
-function calorieStatus(d){
-  const cal = caloriesTotal(d); if(cal==null) return null;
-  const goal = DATA.profile.calorieGoal, over = cal-goal;
-  if(over > goal*0.10) return {state:'over', diff:Math.round(over)};
-  if(over < -goal*0.20) return {state:'under', diff:Math.round(Math.abs(over))};
-  return {state:'ontrack', diff:Math.round(over)};
-}
-function computeStreak(){
-  let streak=0, cursor=todayStr(0), d=DATA.days[cursor];
-  let offset=(!d||!isDayComplete(d))?-1:0;
-  while(true){ const iso=todayStr(offset); const dd=DATA.days[iso]; if(dd&&isDayComplete(dd)){streak++;offset--;} else break; if(streak>400)break; }
-  return streak;
-}
-
-function getLatestWeight(){
-  const sortedDays = Object.keys(DATA.days).sort();
-  const series = sortedDays.map(k=>DATA.days[k].weight).filter(v=>v!=null);
-  return series.length ? series[series.length-1] : DATA.profile.startWeight;
-}
-// Recalculates calorie/protein targets from the latest known weight + height/age/activity (Mifflin-St Jeor, ~500kcal deficit).
-// Called whenever a new weight is logged, or height/age/activity settings change.
-function recalcGoals(){
-  const w = getLatestWeight();
-  const h = DATA.profile.height || 175;
-  const age = DATA.profile.age || 25;
-  const act = DATA.profile.activityMultiplier || 1.55;
-  const bmr = 10*w + 6.25*h - 5*age + 5; // Mifflin-St Jeor (male)
-  const tdee = bmr * act;
-  DATA.profile.calorieGoal = Math.max(1200, Math.round((tdee-500)/10)*10);
-  DATA.profile.proteinGoal = Math.round(w*2);
-}
-
-let toastTimer=null;
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
-function toggleForm(name){ openForm=(openForm===name)?null:name; renderDayDetail(activeDate); }
-function closeModal(id){ document.getElementById(id).classList.remove('show'); }
-function refresh(pulse){ renderCalendarMain(); if(document.getElementById('dayDetailOverlay').classList.contains('show')) renderDayDetail(activeDate, pulse); }
-
-function addMeal(){
-  const nameInput = document.getElementById('newMealName');
-  const calInput = document.getElementById('newMealCal');
-  const protInput = document.getElementById('newMealProt');
-  const name = nameInput.value.trim();
-  const cal = parseFloat(calInput.value);
-  if(!name){ showToast("พิมพ์ชื่อเมนูก่อนนะ"); return; }
-  if(!cal || cal<=0){ showToast("กรอกแคลอรี่ของเมนูนี้ก่อนนะ"); return; }
-  const prot = parseFloat(protInput.value) || 0;
-  const iso = activeDate;
-  const d = getDay(iso);
-  const id = 'm'+Date.now()+Math.random().toString(36).slice(2,6);
-  d.meals.push({id, name, calories:Math.round(cal), protein:Math.round(prot), carbs:0, fat:0});
-  nameInput.value=''; calInput.value=''; protInput.value='';
-  persist(); refresh();
-}
-function deleteMeal(id){ const d=getDay(activeDate); d.meals=d.meals.filter(m=>m.id!==id); persist(); refresh(); }
-function startEditMeal(id){ editingMealId=(editingMealId===id)?null:id; renderDayDetail(activeDate); }
-function saveEditMeal(id){
-  const d=getDay(activeDate); const item=d.meals.find(m=>m.id===id); if(!item) return;
-  const cal=parseFloat(document.getElementById('editCal_'+id).value);
-  const prot=parseFloat(document.getElementById('editProt_'+id).value);
-  if(!isNaN(cal)) item.calories=Math.round(cal);
-  if(!isNaN(prot)) item.protein=Math.round(prot);
-  editingMealId=null;
-  persist(); showToast("แก้ไขแล้ว"); refresh();
-}
-
-function submitWeight(){
-  const iso=activeDate;
-  const w=parseFloat(document.getElementById('inpWeight').value);
-  const waist=document.getElementById('inpWaist').value;
-  if(!w||w<=0){ showToast("กรอกน้ำหนักให้ถูกต้องก่อนนะ"); return; }
-  const d=getDay(iso); d.weight=w; if(waist) d.waist=parseFloat(waist);
-  recalcGoals();
-  persist(); openForm=null;
-  showToast(iso===todayStr(0) ? "บันทึกน้ำหนักแล้ว 💪 (ปรับเป้าหมายแคลอรี่ให้ใหม่แล้ว)" : `บันทึกย้อนหลังวันที่ ${iso} แล้ว 💪`);
-  refresh(true);
-}
-
-function submitSleep(){
-  const iso=activeDate;
-  const hrs=parseFloat(document.getElementById('inpSleep').value);
-  if(isNaN(hrs)||hrs<0||hrs>24){ showToast("กรอกจำนวนชั่วโมงให้ถูกต้อง (0-24)"); return; }
-  const d=getDay(iso); d.sleepHours=hrs;
-  persist(); openForm=null;
-  showToast(hrs<6 ? "บันทึกแล้ว — นอนน้อยไปหน่อยนะ พยายามพักผ่อนให้พอ 😴" : "บันทึกการนอนแล้ว 😴");
-  refresh(true);
-}
-
-function toggleRest(){ const d=getDay(activeDate); d.restDay=!d.restDay; if(d.restDay) d.workoutSubmitted=false; renderDayDetail(activeDate); }
-function toggleCustomWorkout(){
-  const d=getDay(activeDate);
-  d.customWorkoutOverride = !d.customWorkoutOverride;
-  renderDayDetail(activeDate);
-}
-function addCustomExercise(){
-  const nameInput = document.getElementById('newCustomExName');
-  const setsInput = document.getElementById('newCustomExSets');
-  const repsInput = document.getElementById('newCustomExReps');
-  const name = nameInput.value.trim();
-  const sets = parseInt(setsInput.value);
-  const reps = parseInt(repsInput.value);
-  if(!name){ showToast("พิมพ์ชื่อท่าก่อนนะ"); return; }
-  if(!sets || sets<=0 || !reps || reps<=0){ showToast("กรอกจำนวนเซ็ตและครั้งให้ถูกต้อง"); return; }
-  const d = getDay(activeDate);
-  if(!d.customExercises) d.customExercises = [];
-  d.customExercises.push({id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name, sets, reps});
-  nameInput.value=''; setsInput.value=''; repsInput.value='';
-  persist(); refresh();
-}
-function deleteCustomExercise(id){
-  const d = getDay(activeDate);
-  d.customExercises = (d.customExercises||[]).filter(e=>e.id!==id);
-  persist(); refresh();
-}
-function submitWorkout(){
-  const iso=activeDate; const d=getDay(iso);
-  let leveledUp = [];
-  if(!d.restDay){
-    const plan=planFor(iso); const dow=new Date(iso+'T00:00:00').getDay(); const log={}; let anyFilled=false;
-    const beforeTargets = plan.exercises.map((ex,i)=>computeCurrentTarget(dow,i,iso).target);
-    plan.exercises.forEach((ex,i)=>{
-      const arr=[];
-      for(let s=0;s<ex.sets;s++){
-        const el=document.getElementById(`exset_${i}_${s}`);
-        const v=el?parseFloat(el.value):NaN;
-        arr.push(isNaN(v)?0:v);
-        if(!isNaN(v)&&v>0) anyFilled=true;
-      }
-      log[i]=arr;
+async function apiPost(action, payload={}){
+  try{
+    const res = await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action, ...payload})
     });
-    if(!anyFilled){ showToast("กรอกจำนวนที่ทำจริงอย่างน้อย 1 ท่าก่อนนะ"); return; }
-    d.exerciseLog=log; d.workoutSubmitted=true;
-    // Level-up = the target computed as of "the day after" (which now includes today's
-    // freshly-saved log) is higher than the target that applied going into today.
-    const afterIso = isoPlusOne(iso);
-    plan.exercises.forEach((ex,i)=>{
-      const afterTarget = computeCurrentTarget(dow,i,afterIso).target;
-      if(afterTarget > beforeTargets[i]) leveledUp.push(`${ex.name} → ${ex.sets}×${afterTarget} ${unitLabel[ex.type]}`);
-    });
+    const text = await res.text();
+    try { return JSON.parse(text); }
+    catch(e){ return { ok:false, error: 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ข้อมูลที่ถูกต้อง (มักเกิดจาก Deploy เวอร์ชันใหม่ยังไม่มีผล หรือสิทธิ์เข้าถึงเว็บแอปตั้งไว้ไม่ถูกต้อง)' }; }
+  } catch(err){
+    return { ok:false, error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+err };
   }
-  persist(); openForm=null;
-  if(leveledUp.length){
-    showToast(`🎉 เพิ่มเป้าหมายอัตโนมัติ: ${leveledUp.join(', ')}`);
-  } else {
-    showToast(d.restDay ? "พักผ่อนก็สำคัญ บันทึกแล้ว 🌿" : "เยี่ยม! บันทึกการฝึกแล้ว 🔥");
-  }
-  refresh(true);
 }
 
-// Rule-based daily insight — no network call, works fully offline/standalone.
-function generateInsight(iso, d, plan, streak){
-  const lines = [];
-  if(d.weight==null){
-    lines.push({icon:'⚖️', text:'ยังไม่ได้ชั่งน้ำหนักวันนี้ — บันทึกไว้เพื่อดูเทรนด์ระยะยาวได้แม่นยำขึ้น'});
-  }
-  if(plan.exercises.length===0){
-    lines.push({icon:'🌿', text:'วันนี้เป็นวันพักตามแผน พักผ่อนให้เต็มที่'});
-  } else if(d.restDay){
-    lines.push({icon:'🌿', text:'บันทึกเป็นวันพักแทนโปรแกรมเดิม ร่างกายได้ฟื้นตัว'});
-  } else if(!d.workoutSubmitted){
-    lines.push({icon:'🏋️', text:`วันนี้มีโปรแกรม "${plan.label}" รออยู่ ${plan.exercises.length} ท่า`});
-  } else {
-    lines.push({icon:'🔥', text:'บันทึกผลการฝึกตามแผนแล้ว ทำได้ดีมาก'});
-  }
-  const cs = calorieStatus(d);
-  if(!cs){
-    lines.push({icon:'🍽️', text:'ยังไม่ได้บันทึกมื้ออาหารวันนี้'});
-  } else if(cs.state==='over'){
-    lines.push({icon:'⚠️', text:`วันนี้กินเกินเป้าไป ${cs.diff} kcal ลองปรับมื้อถัดไปให้เบาลงหน่อย`});
-  } else if(cs.state==='under'){
-    lines.push({icon:'⚠️', text:'วันนี้กินต่ำกว่าเป้าค่อนข้างมาก ระวังอย่าจำกัดจนเกินไป'});
-  } else {
-    lines.push({icon:'✅', text:'แคลอรี่วันนี้อยู่ในเป้าหมาย เยี่ยมมาก'});
-  }
-  if(d.sleepHours!=null){
-    if(d.sleepHours<6) lines.push({icon:'😴', text:`นอนแค่ ${d.sleepHours} ชม. — พยายามนอนให้ได้ 7-8 ชม. เพื่อการฟื้นตัวที่ดีขึ้น`});
-    else lines.push({icon:'😴', text:`นอน ${d.sleepHours} ชม. เพียงพอดี`});
-  }
-  if(streak>=3) lines.push({icon:'🔥', text:`ทำต่อเนื่องมาแล้ว ${streak} วัน อย่าให้สายขาดนะ!`});
-  return lines;
-}
-
-function openSettings(){
-  document.getElementById('setStart').value=DATA.profile.startWeight;
-  document.getElementById('setGoal').value=DATA.profile.goalWeight;
-  document.getElementById('setHeight').value=DATA.profile.height;
-  document.getElementById('setAge').value=DATA.profile.age;
-  document.getElementById('setActivity').value=DATA.profile.activityMultiplier;
-  document.getElementById('settingsOverlay').classList.add('show');
-  updateGoalsPreview();
-}
-function updateGoalsPreview(){
-  const w = getLatestWeight();
-  const h = parseFloat(document.getElementById('setHeight').value)||DATA.profile.height||175;
-  const age = parseFloat(document.getElementById('setAge').value)||DATA.profile.age||25;
-  const act = parseFloat(document.getElementById('setActivity').value)||1.55;
-  const bmr = 10*w + 6.25*h - 5*age + 5;
-  const tdee = bmr*act;
-  const cal = Math.max(1200, Math.round((tdee-500)/10)*10);
-  const prot = Math.round(w*2);
-  const el = document.getElementById('goalsPreview');
-  if(el) el.innerHTML = `เป้าหมายที่คำนวณได้ (จากน้ำหนักล่าสุด ${w.toFixed(1)} กก.):<br><b style="color:var(--text); font-family:'JetBrains Mono',monospace;">${cal} kcal</b> · <b style="color:var(--text); font-family:'JetBrains Mono',monospace;">${prot} g โปรตีน</b> / วัน`;
-}
-function saveSettings(){
-  DATA.profile.startWeight=parseFloat(document.getElementById('setStart').value)||DATA.profile.startWeight;
-  DATA.profile.goalWeight=parseFloat(document.getElementById('setGoal').value)||DATA.profile.goalWeight;
-  DATA.profile.height=parseFloat(document.getElementById('setHeight').value)||DATA.profile.height;
-  DATA.profile.age=parseFloat(document.getElementById('setAge').value)||DATA.profile.age;
-  DATA.profile.activityMultiplier=parseFloat(document.getElementById('setActivity').value)||DATA.profile.activityMultiplier;
-  recalcGoals();
-  persist(); closeModal('settingsOverlay'); showToast("อัปเดตโปรไฟล์แล้ว"); refresh();
-}
-
-/* ---------- Exercise library ---------- */
-let exerciseLibCategory = null;
-function openExerciseLib(presetCategory){
-  exerciseLibCategory = presetCategory || Object.keys(EXERCISE_LIBRARY)[0];
-  renderExerciseLib();
-  document.getElementById('exerciseLibOverlay').classList.add('show');
-}
-function setExerciseLibCategory(cat){ exerciseLibCategory = cat; renderExerciseLib(); }
-function renderExerciseLib(){
-  const cats = Object.keys(EXERCISE_LIBRARY);
-  const tabs = cats.map(c=>`<div class="lib-tab ${c===exerciseLibCategory?'active':''}" onclick="setExerciseLibCategory('${c}')">${esc(c)}</div>`).join('');
-  const items = EXERCISE_LIBRARY[exerciseLibCategory].map(ex=>`
-    <div class="lib-ex-card">
-      <div class="lib-ex-name">${esc(ex.name)}</div>
-      ${ex.tips.map(t=>`<div class="lib-ex-tip"><span class="bullet">●</span><span>${esc(t)}</span></div>`).join('')}
-    </div>`).join('');
-  document.getElementById('exerciseLibBody').innerHTML = `<div class="lib-tabs">${tabs}</div>${items}`;
-}
-
-/* ---------- Food library ---------- */
-function openFoodLib(){ renderFoodLib(); document.getElementById('foodLibOverlay').classList.add('show'); }
-function renderFoodLib(){
-  const today = todayStr(0);
-  const canAddToday = !!activeDate; // there's always an activeDate once app has loaded
-  let html = '';
-  Object.keys(FOOD_LIBRARY).forEach(cat=>{
-    html += `<div class="lib-food-cat-title">${esc(cat)}</div>`;
-    const items = [...FOOD_LIBRARY[cat]].sort((a,b)=>a.calories-b.calories);
-    items.forEach(item=>{
-      html += `<div class="lib-food-item">
-        <div class="lib-food-name">${esc(item.name)}</div>
-        <div class="lib-food-cal">${item.calories} kcal · P${item.protein}</div>
-        <div class="lib-food-add" onclick="quickAddFood('${esc(item.name).replace(/'/g,"\\'")}', ${item.calories}, ${item.protein})" title="เพิ่มเข้าวันนี้">+</div>
-      </div>`;
-    });
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
   });
-  document.getElementById('foodLibBody').innerHTML = html + `<div style="font-size:10.5px; color:var(--text-faint); margin-top:6px;">ตัวเลขเป็นค่าประมาณต่อ 1 เสิร์ฟทั่วไป ใช้ประกอบการตัดสินใจ ไม่ใช่ค่าที่แม่นยำ 100% — กด + เพื่อเพิ่มเข้าบันทึกของวันที่กำลังดูอยู่ (${fmtDateTH(activeDate||today)})</div>`;
-}
-function quickAddFood(name, calories, protein){
-  const iso = activeDate || todayStr(0);
-  const d = getDay(iso);
-  d.meals.push({id:'m'+Date.now()+Math.random().toString(36).slice(2,6), name, calories, protein, carbs:0, fat:0, note:'จากคลังอาหาร', pending:false, failed:false});
-  persist(); refresh();
-  showToast(`เพิ่ม "${name}" แล้ว (${calories} kcal)`);
 }
 
-function openDayDetail(iso){
-  const today = todayStr(0);
-  if(iso > today) return;
-  activeDate = iso; openForm=null; editingMealId=null;
-  renderDayDetail(iso);
-  document.getElementById('dayDetailOverlay').classList.add('show');
+/**
+ * ย่อ/บีบอัดรูปก่อนอัปโหลดเสมอ (แปลงเป็น JPEG)
+ * เหตุผล: 1) ทำให้ไฟล์เล็กลงมาก ส่งข้อมูลเร็วขึ้นชัดเจนโดยเฉพาะเน็ตมือถือ
+ *         2) แก้ปัญหารูปดูไม่ได้บางไฟล์ (เช่น HEIC จากกล้อง iPhone) เพราะแปลงเป็น JPEG มาตรฐานให้ทุกครั้ง
+ */
+function compressImage(file, maxDim=1280, quality=0.72){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>resolve(reader.result); // ถ้าเบราว์เซอร์ decode ไม่ได้ ใช้ไฟล์เดิมแทน (fallback)
+      img.onload = ()=>{
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width*scale); height = Math.round(height*scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
-function ringSvgMini(pct, color){
-  const r=24, c=2*Math.PI*r, dash=c*pct;
-  return `<svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="6"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${dash} ${c}" transform="rotate(-90 28 28)"/></svg>`;
-}
-function sparkline(values){
-  if(values.length<2) return `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:12px;">บันทึกน้ำหนักอีก ${2-values.length} ครั้งเพื่อดูกราฟ</div>`;
-  const w=300,h=64,pad=6;
-  const min=Math.min(...values), max=Math.max(...values), range=(max-min)||1;
-  const step=(w-2*pad)/(values.length-1);
-  const pts=values.map((v,i)=>[pad+i*step, pad+(1-((v-min)/range))*(h-2*pad)]);
-  const path=pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
-  const last=pts[pts.length-1];
-  const areaPath = path+` L${last[0]},${h} L${pts[0][0]},${h} Z`;
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="100%" preserveAspectRatio="none">
-    <defs><linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FF5A36" stop-opacity="0.35"/><stop offset="100%" stop-color="#FF5A36" stop-opacity="0"/></linearGradient></defs>
-    <path d="${areaPath}" fill="url(#grad1)" stroke="none"/>
-    <path d="${path}" fill="none" stroke="#FF5A36" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${last[0]}" cy="${last[1]}" r="4" fill="#FF5A36"/>
-  </svg>`;
-}
 
-function renderDayDetail(iso, pulse){
-  const today = todayStr(0);
-  const isEditingPast = iso !== today;
-  const d = getDay(iso);
-  const plan = planFor(iso);
-  const cc = completionCount(d);
-  const calStatus = calorieStatus(d);
-  const isOverCal = calStatus && calStatus.state==='over';
-  const calTotal = caloriesTotal(d)||0, protTotal = proteinTotal(d)||0;
-  const calPct = Math.min(calTotal/DATA.profile.calorieGoal,1)*100;
-  const protPct = Math.min(protTotal/DATA.profile.proteinGoal,1)*100;
-  const calBarColor = isOverCal ? 'linear-gradient(90deg, var(--gold), var(--effort))' : 'var(--effort)';
-  const checkSvg = `<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M5 12l4 4L19 6" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round"/></svg>`;
+/* ===== NAV ===== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['form','status','admin'].forEach(t=>{
+      document.getElementById('tab-'+t).style.display = (t===btn.dataset.tab)?'block':'none';
+    });
+    if(btn.dataset.tab==='status') loadRequests(false);
+    if(btn.dataset.tab==='admin' && sessionStorage.getItem('isAdmin')==='1') loadAdminData();
+  });
+});
 
-  const sortedDays = Object.keys(DATA.days).sort();
-  const weightSeries = sortedDays.map(k=>DATA.days[k].weight).filter(v=>v!=null);
-  const last14 = weightSeries.slice(-14);
-  const latestWeight = last14.length ? last14[last14.length-1] : DATA.profile.startWeight;
-  const prevWeight = last14.length>1 ? last14[last14.length-2] : null;
-  let deltaClass='flat', deltaTxt='—';
-  if(prevWeight!=null){ const diff=latestWeight-prevWeight; deltaTxt=(diff>0?'+':'')+diff.toFixed(1)+' กก.'; deltaClass=diff<0?'down':(diff>0?'up':'flat'); }
-  const startW=DATA.profile.startWeight, goalW=DATA.profile.goalWeight;
-  const totalToLose=Math.max(startW-goalW,0.1), lostSoFar=Math.max(startW-latestWeight,0);
-  const goalPct=Math.min(Math.max(lostSoFar/totalToLose,0),1)*100;
-
-  document.getElementById('dayDetailTitle').textContent = fmtDateTH(iso) + (isEditingPast?'':' (วันนี้)');
-
-  let exerciseHtml='';
-  const dow = new Date(iso+'T00:00:00').getDay();
-  if(plan.exercises.length===0){
-    exerciseHtml = `<div style="font-size:13px; color:var(--text-dim); text-align:center; padding:10px 0;">🌿 วันนี้เป็นวันพักตามแผน — พักได้เต็มที่</div>`;
-  } else {
-    exerciseHtml = plan.exercises.map((ex,i)=>{
-      const {target, streak} = computeCurrentTarget(dow, i, iso);
-      const streakBadge = streak>0 ? `<span style="font-size:10px; color:var(--gold); margin-left:6px; white-space:nowrap;">🔥 ${streak}/2 ครั้งติด</span>` : '';
-      const logged=d.exerciseLog[i]||[];
-      let setsHtml='';
-      for(let s=0;s<ex.sets;s++){
-        const val = logged[s]!=null && logged[s]!==0 ? logged[s] : '';
-        setsHtml += `<div class="ex-set"><label>เซ็ต ${s+1}</label><input type="number" id="exset_${i}_${s}" value="${val}" placeholder="${target}"></div>`;
-      }
-      return `<div class="ex-row"><div class="ex-top"><div class="ex-name">${esc(ex.name)}${streakBadge}</div><div class="ex-target">${ex.sets}×${target} ${unitLabel[ex.type]}</div></div><div class="ex-sets">${setsHtml}</div></div>`;
-    }).join('');
+/* ===== INIT ===== */
+async function init(){
+  if(API_URL.includes('PASTE_YOUR')){
+    toast('ยังไม่ได้ตั้งค่า API_URL ในไฟล์ index.html');
   }
+  document.getElementById('f_borrow').value = toLocalInput(new Date());
+  bindPhotoDrop();
 
-  let customExHtml = '';
-  if(!d.customExercises || d.customExercises.length===0){
-    customExHtml = `<div style="font-size:12px; color:var(--text-faint); text-align:center; padding:6px 0 10px;">ยังไม่ได้เพิ่มท่าใดๆ</div>`;
-  } else {
-    customExHtml = d.customExercises.map(ce=>`
-      <div class="meal-item">
-        <div class="meal-name"><div class="mn">${esc(ce.name)}</div><div class="meal-macro">${ce.sets} เซ็ต × ${ce.reps} ครั้ง</div></div>
-        <div class="meal-del" onclick="deleteCustomExercise('${ce.id}')">✕</div>
-      </div>`).join('');
-  }
-
-  let mealsHtml='';
-  if(!d.meals || d.meals.length===0){
-    mealsHtml = `<div style="font-size:12px; color:var(--text-faint); text-align:center; padding:6px 0 10px;">ยังไม่มีเมนูที่บันทึกวันนี้</div>`;
-  } else {
-    mealsHtml = d.meals.map(m=>{
-      const editing = editingMealId===m.id;
-      return `<div><div class="meal-item"><div class="meal-name"><div class="mn">${esc(m.name)}</div><div class="meal-macro">P${m.protein||0} C${m.carbs||0} F${m.fat||0}</div></div><div class="meal-cal" onclick="startEditMeal('${m.id}')">${m.calories} <span style="font-size:10px;color:var(--text-faint)">kcal</span></div><div class="meal-del" onclick="deleteMeal('${m.id}')">✕</div></div>
-        ${editing?`<div class="meal-edit-row"><div class="field"><label>แคลอรี่</label><input type="number" id="editCal_${m.id}" value="${m.calories}"></div><div class="field"><label>โปรตีน (ก.)</label><input type="number" id="editProt_${m.id}" value="${m.protein||0}"></div><button class="btn btn-primary" style="flex:0 0 auto; align-self:flex-end; padding:10px 14px;" onclick="saveEditMeal('${m.id}')">✓</button></div>`:''}
-      </div>`;
-    }).join('');
-  }
-
-  const insightLines = generateInsight(iso, d, plan, computeStreak());
-  const insightHtml = insightLines.map(l=>`<div style="display:flex; gap:8px; margin-bottom:8px; font-size:13px; line-height:1.5;"><span>${l.icon}</span><span>${esc(l.text)}</span></div>`).join('');
-
-  const wIcon = d.weight!=null ? checkSvg : '';
-  const pulseHtml = pulse && cc===3 ? `<div style="text-align:center; font-size:13px; color:var(--recovery); margin-bottom:14px;">🔥 <b>ครบทั้ง 3 อย่างวันนี้!</b> ทำได้ดีมาก</div>` : '';
-
-  document.getElementById('dayDetailBody').innerHTML = `
-    ${isEditingPast?`<div style="font-size:11px; color:var(--gold); background:var(--gold-dim); border:1px solid #F2B70540; border-radius:10px; padding:8px 12px; margin-bottom:14px;">📝 กำลังแก้ไขข้อมูลย้อนหลัง</div>`:''}
-    ${pulseHtml}
-    <div class="mini-ring-row">
-      <div class="mini-ring">${ringSvgMini(d.weight!=null?1:0,'#FF5A36')}<div class="lbl">⚖️</div></div>
-      <div class="mini-ring">${ringSvgMini(workoutDoneFlag(d)?1:0,'#3DDC97')}<div class="lbl">🏋️</div></div>
-      <div class="mini-ring">${ringSvgMini(mealsLogged(d)?1:0,'#F2B705')}<div class="lbl">🍽️</div></div>
-    </div>
-
-    <div class="card ${d.weight!=null?'done':''}">
-      <div class="card-top" onclick="toggleForm('weight')">
-        <div class="card-left"><div class="qicon">⚖️</div><div><div class="ctitle">ชั่งน้ำหนัก</div><div class="csub">${d.weight!=null?d.weight+' กก.':'ยังไม่บันทึก'}</div></div></div>
-        <div class="qcheck">${wIcon}</div>
-      </div>
-      <div class="qform ${openForm==='weight'?'open':''}"><div class="qform-inner">
-        <div class="field-row">
-          <div class="field"><label>น้ำหนัก (กก.)</label><input type="number" step="0.1" id="inpWeight" value="${d.weight??''}" placeholder="เช่น 92.4"></div>
-          <div class="field"><label>รอบเอว (ซม.) — ไม่บังคับ</label><input type="number" step="0.5" id="inpWaist" value="${d.waist??''}" placeholder="เช่น 97"></div>
-        </div>
-        <div class="btnrow"><button class="btn btn-primary" onclick="submitWeight()">บันทึก</button></div>
-      </div></div>
-    </div>
-
-    <div class="card ${d.sleepHours!=null?'done':''}">
-      <div class="card-top" onclick="toggleForm('sleep')">
-        <div class="card-left"><div class="qicon">😴</div><div><div class="ctitle">การพักผ่อน</div><div class="csub">${d.sleepHours!=null?d.sleepHours+' ชม.':'ยังไม่บันทึก'}</div></div></div>
-        <div class="qcheck">${d.sleepHours!=null?checkSvg:''}</div>
-      </div>
-      <div class="qform ${openForm==='sleep'?'open':''}"><div class="qform-inner">
-        <div class="field-row">
-          <div class="field"><label>ชั่วโมงการนอน (คืนก่อนหน้า)</label><input type="number" step="0.5" id="inpSleep" value="${d.sleepHours??''}" placeholder="เช่น 7"></div>
-        </div>
-        <div class="btnrow"><button class="btn btn-primary" onclick="submitSleep()">บันทึก</button></div>
-      </div></div>
-    </div>
-
-    <div class="card ${workoutDoneFlag(d)?'done':''}">
-      <div class="card-top" onclick="toggleForm('workout')">
-        <div class="card-left"><div class="qicon">🏋️</div><div><div class="ctitle">${plan.label}</div><div class="csub">${plan.exercises.length===0 ? (d.customExercises&&d.customExercises.length ? d.customExercises.length+' ท่า (นอกแผน)' : 'วันพักตามแผน') : (d.restDay?'บันทึกเป็นวันพัก':(d.workoutSubmitted?'บันทึกผลจริงแล้ว':plan.exercises.length+' ท่า — แตะเพื่อกรอกผล'))}</div></div></div>
-        <div class="qcheck">${workoutDoneFlag(d)?checkSvg:''}</div>
-      </div>
-      <div class="qform ${openForm==='workout'?'open':''}"><div class="qform-inner">
-        ${plan.exercises.length===0 ? `
-          <div class="rest-toggle"><span>ออกกำลังกายวันนี้แทนพัก</span><div class="switch ${d.customWorkoutOverride?'on':''}" onclick="toggleCustomWorkout()"></div></div>
-          ${d.customWorkoutOverride ? `
-            <div style="margin-bottom:8px;"><span style="font-size:11.5px; color:var(--gold); cursor:pointer;" onclick="openExerciseLib()">📚 ดูตัวอย่างท่าออกกำลังกาย</span></div>
-            ${customExHtml}
-            <div class="field-row" style="margin-top:8px;">
-              <div class="field" style="flex:2;"><label>ชื่อท่า</label><input type="text" id="newCustomExName" placeholder="เช่น วิ่งเทรล"></div>
-              <div class="field"><label>เซ็ต</label><input type="number" id="newCustomExSets" placeholder="3"></div>
-            </div>
-            <div class="field-row">
-              <div class="field"><label>ครั้ง/เซ็ต</label><input type="number" id="newCustomExReps" placeholder="10"></div>
-              <div class="field" style="display:flex; align-items:flex-end;"><button class="btn btn-primary" style="width:100%;" onclick="addCustomExercise()">+ เพิ่มท่า</button></div>
-            </div>
-          ` : `<div style="font-size:13px; color:var(--text-dim); text-align:center; padding:6px 0 14px;">🌿 วันนี้เป็นวันพักตามแผน — พักได้เต็มที่</div>`}
-        ` : `
-          <div class="rest-toggle"><span>วันนี้เป็นวันพัก (ไม่ตรงแผน)</span><div class="switch ${d.restDay?'on':''}" onclick="toggleRest()"></div></div>
-          ${!d.restDay ? `<div style="margin-bottom:8px;"><span style="font-size:11.5px; color:var(--gold); cursor:pointer;" onclick="openExerciseLib('${esc(PLAN_TO_LIBCAT[new Date(iso+'T00:00:00').getDay()])}')">📚 ดูตัวอย่างท่าและวิธีทำที่ถูกต้อง</span></div>${exerciseHtml}` : `<div style="font-size:13px; color:var(--text-dim); text-align:center; padding:6px 0 14px;">🌿 บันทึกเป็นวันพักแล้ว</div>`}
-          <div class="btnrow" style="margin-top:6px;"><button class="btn btn-primary" onclick="submitWorkout()">${d.restDay?'บันทึกวันพัก':'บันทึกผลการฝึก'}</button></div>
-        `}
-      </div></div>
-    </div>
-
-    <div class="card ${mealsLogged(d)?'done':''}">
-      <div class="card-top" onclick="toggleForm('meals')">
-        <div class="card-left"><div class="qicon">🍽️</div><div><div class="ctitle">บันทึกเมนูอาหาร</div><div class="csub">${d.meals&&d.meals.length? d.meals.length+' เมนู · '+calTotal+' kcal' : 'ยังไม่บันทึก'}</div></div></div>
-        <div class="qcheck">${mealsLogged(d)?checkSvg:''}</div>
-      </div>
-      ${isOverCal?`<div style="margin-top:8px; font-size:11px; color:var(--effort);">🔥 เกินเป้า ${calStatus.diff} kcal</div>`:''}
-      <div class="qform ${openForm==='meals'?'open':''}"><div class="qform-inner">
-        <div style="margin-bottom:10px;"><span style="font-size:11.5px; color:var(--gold); cursor:pointer;" onclick="openFoodLib()">🍽️ ดูคลังเมนูอาหารพร้อมแคลอรี่ (เลือกได้เลย)</span></div>
-        ${mealsHtml}
-        <div class="field-row" style="margin-top:8px;">
-          <div class="field" style="flex:2;"><label>ชื่อเมนู</label><input type="text" id="newMealName" placeholder="เช่น ผัดกะเพราไก่ไข่ดาว"></div>
-          <div class="field"><label>แคลอรี่</label><input type="number" id="newMealCal" placeholder="kcal"></div>
-        </div>
-        <div class="field-row">
-          <div class="field"><label>โปรตีน (ก.) — ไม่บังคับ</label><input type="number" id="newMealProt" placeholder="เช่น 25"></div>
-          <div class="field" style="display:flex; align-items:flex-end;"><button class="btn btn-primary" style="width:100%;" onclick="addMeal()">+ เพิ่ม</button></div>
-        </div>
-        <div style="font-size:10px; color:var(--text-faint); margin-top:6px;">กรอกแคลอรี่เองตามฉลากโภชนาการหรือแหล่งข้อมูลที่คุณเชื่อถือ — แตะที่ตัวเลขแคลอรี่ของเมนูที่เพิ่มแล้วเพื่อแก้ไขทีหลังได้</div>
-      </div></div>
-    </div>
-
-    <div class="coach-card">
-      <div class="coach-head"><div class="coach-avatar">📋</div><div style="font-family:'Kanit',sans-serif; font-weight:600; font-size:14px;">สรุปวันนี้</div></div>
-      ${insightHtml}
-    </div>
-
-    <div class="card">
-      <h3 style="font-size:13px; color:var(--text-dim); font-weight:500; margin-bottom:12px;">เทรนด์น้ำหนัก</h3>
-      <div class="weight-row">
-        <div class="weight-big">${latestWeight.toFixed(1)}</div>
-        <div style="color:var(--text-dim);font-size:13px;">กก.</div>
-        <div class="weight-delta ${deltaClass}">${deltaTxt}</div>
-      </div>
-      <div class="chart-wrap">${sparkline(last14)}</div>
-      <div class="goal-progress" style="margin-top:6px;">
-        <div class="goal-track"><div class="goal-fill" style="width:${goalPct}%"></div></div>
-        <div class="goal-labels"><span>${startW} กก.</span><span>${goalPct.toFixed(0)}% ถึงเป้าหมาย</span><span>${goalW} กก.</span></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="font-size:13px; color:var(--text-dim); font-weight:500; margin-bottom:12px;">โภชนาการ${isEditingPast?'วันที่เลือก':'วันนี้'}</h3>
-      <div class="bar-row">
-        <div class="bar-top"><span class="label">แคลอรี่</span><span class="val" style="${isOverCal?'color:var(--effort)':''}">${calTotal} / ${DATA.profile.calorieGoal} kcal${isOverCal?' (+'+calStatus.diff+')':''}</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${calPct}%; background:${calBarColor};"></div></div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-top"><span class="label">โปรตีน</span><span class="val">${protTotal} / ${DATA.profile.proteinGoal} ก.</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${protPct}%; background:var(--recovery);"></div></div>
-      </div>
-    </div>
-  `;
-}
-
-function cellContentHtml(iso, dd, today){
-  const plan = planFor(iso);
-  const isPast = iso < today;
-  let lines = [];
-  if(plan.exercises.length===0){
-    if(dd && dd.customExercises && dd.customExercises.length>0){
-      lines.push(`<div class="cell-line done">ออกกำลังกาย</div>`);
-    } else {
-      lines.push(`<div class="cell-line rest">พักตามแผน</div>`);
+  // โหลด settings + tools + departments พร้อมกันในคำขอเดียว (เดิมยิง 3 รอบ ทำให้ช้า)
+  try{
+    const initRes = await apiGet('getInitData');
+    if(initRes.ok){
+      STATE.settings = initRes.settings || {};
+      STATE.tools = initRes.tools || [];
+      STATE.departments = initRes.departments || [];
+      applySettings(); renderToolSelect(); renderDeptSelect();
     }
+  } catch(err){ toast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: '+err); }
+
+  // ถ้ามี ?tool=ชื่อเครื่องมือ ต่อท้ายลิงก์ (มาจากการสแกน QR) ให้เลือกเครื่องมือนั้นให้อัตโนมัติ
+  const qsTool = new URLSearchParams(location.search).get('tool');
+  if(qsTool){
+    const sel = document.getElementById('f_toolSelect');
+    const opt = [...sel.options].find(o=>o.value===qsTool);
+    if(opt){ sel.value = qsTool; }
+    else { sel.value = '__custom__'; document.getElementById('f_toolCustom').style.display='block'; document.getElementById('f_toolCustom').value = qsTool; }
+  }
+
+  if(sessionStorage.getItem('isAdmin')==='1'){ loadAdminData(); }
+}
+function toLocalInput(d){
+  const pad = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function applySettings(){
+  document.getElementById('siteTitle').textContent = STATE.settings.SiteName || 'ระบบยืม-คืนเครื่องมือ';
+  document.title = STATE.settings.SiteName || 'ระบบยืม-คืนเครื่องมือ';
+  const wrap = document.getElementById('logoWrap');
+  if(STATE.settings.LogoURL){
+    const initial = (STATE.settings.SiteName||'T').trim().charAt(0);
+    wrap.innerHTML = `<img src="${STATE.settings.LogoURL}" alt="logo" onerror="this.outerHTML='<div class=&quot;logo-fallback&quot;>${initial}</div>'">`;
   } else {
-    const wDone = dd && workoutDoneFlag(dd);
-    const cls = wDone ? 'done' : (isPast ? 'missed' : 'pending');
-    lines.push(`<div class="cell-line ${cls}">${esc(plan.short)}</div>`);
+    const initial = (STATE.settings.SiteName||'T').trim().charAt(0);
+    wrap.innerHTML = `<div class="logo-fallback">${initial}</div>`;
   }
-  const cal = dd ? caloriesTotal(dd) : null;
-  if(cal!=null){
-    const cs = calorieStatus(dd);
-    const cls = (cs && cs.state==='over') ? 'warn' : 'done';
-    lines.push(`<div class="cell-line ${cls}">${cal} kcal</div>`);
-  } else if(isPast){
-    lines.push(`<div class="cell-line missed">ไม่ได้กิน</div>`);
-  }
-  return lines.join('');
 }
-function navMonth(delta){ calMonthOffset += delta; renderCalendarMain(); }
-function setSummaryRange(days){ summaryRange = days; renderCalendarMain(); }
-function average(arr){ if(!arr.length) return null; return arr.reduce((a,b)=>a+b,0)/arr.length; }
-
-function buildRangeStats(rangeDays){
-  const entries=[];
-  for(let i=0;i<rangeDays;i++){
-    const iso=todayStr(-i); const d=DATA.days[iso];
-    if(d && (d.weight!=null||workoutDoneFlag(d)||mealsLogged(d))) entries.push([iso,d]);
-  }
-  entries.sort((a,b)=> a[0]<b[0]?1:-1);
-  const weights = entries.filter(([,d])=>d.weight!=null).map(([,d])=>d.weight);
-  const avgCal = average(entries.map(([,d])=>caloriesTotal(d)).filter(v=>v!=null));
-  const avgProt = average(entries.map(([,d])=>proteinTotal(d)).filter(v=>v!=null));
-  const completeDays = entries.filter(([,d])=>isDayComplete(d)).length;
-  const weightChange = weights.length>=2 ? (weights[0]-weights[weights.length-1]) : null;
-  return {entries, avgCal, avgProt, completeDays, weightChange};
+function renderToolSelect(){
+  const sel = document.getElementById('f_toolSelect');
+  sel.innerHTML = STATE.tools.map(t=>`<option value="${escAttr(t)}">${escHtml(t)}</option>`).join('') +
+    `<option value="__custom__">อื่นๆ (พิมพ์เอง)</option>`;
+  sel.onchange = ()=>{
+    document.getElementById('f_toolCustom').style.display = (sel.value==='__custom__')?'block':'none';
+  };
 }
+function renderDeptSelect(){
+  const sel = document.getElementById('f_department');
+  sel.innerHTML = STATE.departments.map(d=>`<option value="${escAttr(d)}">${escHtml(d)}</option>`).join('') +
+    `<option value="__custom__">+ เพิ่มแผนก/กลุ่มของฉันเอง</option>`;
+  sel.onchange = ()=>{
+    const showCustom = sel.value==='__custom__';
+    document.getElementById('f_departmentCustom').style.display = showCustom?'block':'none';
+    document.getElementById('f_departmentHint').style.display = showCustom?'block':'none';
+  };
+}
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s){ return escHtml(s); }
 
-// How closely actual logged days matched the assigned program over the range.
-function buildAdherence(rangeDays){
-  let plannedWorkoutDays=0, workoutHits=0, calHits=0, sleepSum=0, sleepCount=0;
-  for(let i=0;i<rangeDays;i++){
-    const iso = todayStr(-i);
-    const d = DATA.days[iso];
-    const plan = planFor(iso);
-    if(plan.exercises.length>0){
-      plannedWorkoutDays++;
-      if(d && workoutDoneFlag(d)) workoutHits++;
+/* ===== PHOTO PICKER =====
+   f_photo (input[type=file]) เป็นอิลิเมนต์ถาวร ไม่ถูกลบ/สร้างใหม่เด็ดขาด — แก้บั๊กเดิมที่พอเลือก
+   รูปครั้งแรกแล้ว input ถูกเขียนทับหายไปจาก innerHTML ทำให้กด "เปลี่ยนรูป" ครั้งต่อไปไม่ทำงาน
+   ส่วนพรีวิวรูป จะอัปเดตเฉพาะใน #photoPreviewArea เท่านั้น */
+let selectedPhotoBase64 = null;
+function resetPhotoDrop(){
+  document.getElementById('photoPreviewArea').innerHTML = `<span class="ph">แตะเพื่อถ่ายรูป/แนบรูป</span>`;
+  document.getElementById('f_photo').value = '';
+}
+function bindPhotoDrop(){
+  const drop = document.getElementById('photoDrop');
+  const input = document.getElementById('f_photo');
+  const preview = document.getElementById('photoPreviewArea');
+  drop.onclick = ()=>input.click();
+  input.onchange = async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    preview.innerHTML = `<span class="ph">กำลังย่อรูป...</span>`;
+    try{
+      selectedPhotoBase64 = await compressImage(file);
+      preview.innerHTML = `<img src="${selectedPhotoBase64}"><div class="ph">แตะเพื่อเปลี่ยนรูป</div>`;
+    } catch(err){
+      preview.innerHTML = `<span class="ph">แนบรูปไม่สำเร็จ ลองใหม่อีกครั้ง</span>`;
+      selectedPhotoBase64 = null;
     }
-    if(d){
-      const cs = calorieStatus(d);
-      if(cs && cs.state==='ontrack') calHits++;
-      if(d.sleepHours!=null){ sleepSum+=d.sleepHours; sleepCount++; }
-    }
-  }
-  return {
-    workoutPct: plannedWorkoutDays ? Math.round(workoutHits/plannedWorkoutDays*100) : 0,
-    calPct: Math.round(calHits/rangeDays*100),
-    avgSleep: sleepCount ? sleepSum/sleepCount : null
   };
 }
 
-function renderCalendarMain(){
-  const today = todayStr(0);
-  const streak = computeStreak();
-  const base = new Date(); base.setDate(1); base.setMonth(base.getMonth()+calMonthOffset);
-  const year=base.getFullYear(), month=base.getMonth();
-  const firstDay=new Date(year,month,1);
-  const startWeekday = firstDay.getDay();
-  const daysInMonth = new Date(year,month+1,0).getDate();
-  const monthNames=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+/* ===== SUBMIT FORM ===== */
+document.getElementById('requestForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const name = document.getElementById('f_name').value.trim();
+  const deptSel = document.getElementById('f_department').value;
+  const deptCustom = document.getElementById('f_departmentCustom').value.trim();
+  const department = deptSel==='__custom__' ? deptCustom : deptSel;
+  const toolSel = document.getElementById('f_toolSelect').value;
+  const toolCustom = document.getElementById('f_toolCustom').value.trim();
+  const toolName = toolSel==='__custom__' ? toolCustom : toolSel;
+  const borrowDateTime = document.getElementById('f_borrow').value;
+  const expectedReturnDateTime = document.getElementById('f_return').value;
+  const note = document.getElementById('f_note').value.trim();
 
-  let cells='';
-  for(let i=0;i<startWeekday;i++) cells += `<div class="cal-cell empty"></div>`;
-  for(let day=1; day<=daysInMonth; day++){
-    const dt=new Date(year,month,day);
-    const iso=isoLocal(dt);
-    const dd=DATA.days[iso];
-    const isFuture = iso>today;
-    const isToday = iso===today;
-    cells += `<div class="cal-cell ${isFuture?'future':''} ${isToday?'today2':''}" onclick="${isFuture?'':`openDayDetail('${iso}')`}">
-      <div class="cal-daynum">${day}</div>
-      ${isFuture?'':cellContentHtml(iso, dd, today)}
-    </div>`;
+  if(!name || !department || !toolName || !borrowDateTime || !expectedReturnDateTime || !selectedPhotoBase64){
+    toast('กรุณากรอกข้อมูลให้ครบทุกช่องที่จำเป็น'); return;
   }
+  if(new Date(expectedReturnDateTime) <= new Date(borrowDateTime)){
+    toast('วันเวลาที่คาดว่าจะคืน ต้องอยู่หลังวันเวลาที่ยืม'); return;
+  }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+  try{
+    // ถ้าเลือก "เพิ่มแผนก/กลุ่มของฉันเอง" และยังไม่มีชื่อนี้ในระบบ ให้เพิ่มเข้าไปก่อนส่งคำขอ
+    // (ผู้ใช้ทั่วไปเพิ่มได้ แต่ลบได้เฉพาะผู้ดูแลระบบในแท็บผู้ดูแลระบบเท่านั้น)
+    if(deptSel==='__custom__' && !STATE.departments.includes(department)){
+      const addRes = await apiPost('addDepartment', {name: department});
+      if(addRes.ok){ STATE.departments.push(department); renderDeptSelect(); }
+    }
+    const res = await apiPost('submitRequest', {
+      name, department, toolName, borrowDateTime, expectedReturnDateTime,
+      photo: selectedPhotoBase64, note
+    });
+    if(res.ok){
+      toast('ส่งคำขอสำเร็จ รหัส '+res.id+' รอการอนุมัติ');
+      e.target.reset();
+      selectedPhotoBase64 = null;
+      resetPhotoDrop();
+      document.getElementById('f_toolCustom').style.display = 'none';
+      document.getElementById('f_departmentCustom').style.display = 'none';
+      document.getElementById('f_departmentHint').style.display = 'none';
+      document.getElementById('f_borrow').value = toLocalInput(new Date());
+    } else {
+      toast('เกิดข้อผิดพลาด: '+res.error);
+    }
+  } catch(err){ toast('เชื่อมต่อไม่สำเร็จ: '+err); }
+  btn.disabled = false; btn.textContent = 'ส่งคำขอยืม';
+});
 
-  const s = buildRangeStats(summaryRange);
-  const adh = buildAdherence(summaryRange);
-  const changeTxt = s.weightChange==null?'—':(s.weightChange>0?'-'+s.weightChange.toFixed(1)+' กก.':(s.weightChange<0?'+'+Math.abs(s.weightChange).toFixed(1)+' กก.':'0 กก.'));
-  const changeColor = s.weightChange>0?'var(--recovery)':(s.weightChange<0?'var(--effort)':'var(--text-dim)');
-  const tip = TIPS[new Date().getDate()%TIPS.length];
+/* ===== STATUS TAB ===== */
+const STATUS_OPTIONS = ['ทั้งหมด','รออนุมัติ','อนุมัติแล้ว','เกินกำหนด','คืนแล้ว','ปฏิเสธ'];
+function renderChips(){
+  document.getElementById('statusChips').innerHTML = STATUS_OPTIONS.map(s=>
+    `<div class="chip ${s===STATE.statusFilter?'active':''}" onclick="setFilter('${s}')">${s}</div>`).join('');
+}
+function setFilter(s){ STATE.statusFilter = s; renderChips(); renderTickets(); }
+let searchDebounce;
+document.getElementById('searchBox').addEventListener('input', ()=>{
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(renderTickets, 150);
+});
 
-  document.getElementById('app').innerHTML = `
-    <div class="top-header">
-      <div>
-        <h1>Daily Ops</h1>
-        <div class="sub">แตะวันที่เพื่อดูรายละเอียดและบันทึกข้อมูล</div>
-      </div>
-      <div class="top-actions">
-        <div class="streak-chip">🔥 ${streak}</div>
-        <div class="iconbtn" onclick="openExerciseLib()" title="คลังท่าออกกำลังกาย">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 9.5v5M22 9.5v5M6.5 6.5L2 9.5M6.5 17.5L2 14.5M17.5 6.5L22 9.5M17.5 17.5L22 14.5"/></svg>
-        </div>
-        <div class="iconbtn" onclick="openSettings()" title="ตั้งค่า">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        </div>
-      </div>
-    </div>
-    <div style="margin-bottom:14px;"><button class="todaybtn" style="width:100%;" onclick="openDayDetail('${today}')">📍 เปิดข้อมูลวันนี้ (${fmtDateTH(today)})</button></div>
-
-    <div class="cal-wrap">
-      <div class="cal-nav">
-        <div class="navbtn" onclick="navMonth(-1)">‹</div>
-        <div class="label">${monthNames[month]} ${year+543}</div>
-        <div class="navbtn" onclick="navMonth(1)">›</div>
-      </div>
-      <div class="cal-grid">
-        <div class="cal-dow">อา</div><div class="cal-dow">จ</div><div class="cal-dow">อ</div><div class="cal-dow">พ</div><div class="cal-dow">พฤ</div><div class="cal-dow">ศ</div><div class="cal-dow">ส</div>
-        ${cells}
-      </div>
-      <div class="cal-legend">
-        <div class="lg"><span class="sw" style="background:var(--recovery)"></span>ทำครบ (ขีดฆ่า)</div>
-        <div class="lg"><span class="sw" style="background:var(--gold)"></span>เกินเป้าแคลอรี่</div>
-        <div class="lg"><span class="sw" style="background:var(--danger)"></span>พลาดไป</div>
-        <div class="lg"><span class="sw" style="background:var(--text-faint)"></span>ยังไม่ถึง/รอทำ</div>
-      </div>
-    </div>
-
-    <div class="section-title">สรุปความคืบหน้า</div>
-    <div class="sum-tabs">
-      <div class="sum-tab ${summaryRange===7?'active':''}" onclick="setSummaryRange(7)">7 วัน</div>
-      <div class="sum-tab ${summaryRange===30?'active':''}" onclick="setSummaryRange(30)">30 วัน</div>
-      <div class="sum-tab ${summaryRange===90?'active':''}" onclick="setSummaryRange(90)">90 วัน</div>
-    </div>
-    <div class="sum-grid">
-      <div class="sum-stat"><div class="n" style="color:${changeColor}">${changeTxt}</div><div class="l">น้ำหนักเปลี่ยนแปลง</div></div>
-      <div class="sum-stat"><div class="n">${s.completeDays}/${summaryRange}</div><div class="l">วันที่ครบ 3 อย่าง</div></div>
-      <div class="sum-stat"><div class="n">${s.avgCal?Math.round(s.avgCal):'-'}</div><div class="l">แคลอรี่เฉลี่ย/วัน</div></div>
-      <div class="sum-stat"><div class="n">${s.avgProt?Math.round(s.avgProt):'-'}</div><div class="l">โปรตีนเฉลี่ย (ก.)</div></div>
-    </div>
-
-    <div class="section-title">ความสม่ำเสมอตามโปรแกรม</div>
-    <div class="card">
-      <div class="bar-row">
-        <div class="bar-top"><span class="label">ออกกำลังกายตามแผนที่วางไว้</span><span class="val">${adh.workoutPct}%</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${adh.workoutPct}%; background:var(--recovery);"></div></div>
-      </div>
-      <div class="bar-row" style="${adh.avgSleep==null?'margin-bottom:0;':''}">
-        <div class="bar-top"><span class="label">กินอยู่ในเป้าแคลอรี่</span><span class="val">${adh.calPct}%</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${adh.calPct}%; background:var(--gold);"></div></div>
-      </div>
-      ${adh.avgSleep!=null?`<div class="bar-row" style="margin-bottom:0;">
-        <div class="bar-top"><span class="label">ชั่วโมงนอนเฉลี่ย</span><span class="val">${adh.avgSleep.toFixed(1)} ชม.</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(adh.avgSleep/8*100,100)}%; background:var(--sleep);"></div></div>
-      </div>`:''}
-    </div>
-
-    <div class="tip"><div class="tip-icon">💡</div><div class="tip-text">${tip}</div></div>
-  `;
+function isOverdue(r){
+  return r.Status==='อนุมัติแล้ว' && new Date(r.ExpectedReturnDateTime) < new Date();
 }
 
-(async function init(){
-  await loadData();
-  renderCalendarMain();
-})();
+/**
+ * force=false (ค่าเริ่มต้น): ถ้าเพิ่งโหลดข้อมูลไปไม่เกิน REQUESTS_CACHE_MS จะไม่ยิงคำขอซ้ำ
+ * ทำให้การสลับแท็บไปมาไวขึ้นมาก ไม่ต้องรอโหลดใหม่ทุกครั้ง
+ * force=true: ใช้ตอนกดปุ่ม "รีเฟรช" หรือหลังมีการเปลี่ยนสถานะ (อนุมัติ/ปฏิเสธ/แจ้งคืน) ที่ต้องเห็นผลทันที
+ */
+async function loadRequests(force=true){
+  const isFresh = (Date.now() - STATE.requestsLoadedAt) < REQUESTS_CACHE_MS;
+  if(!force && isFresh && STATE.requests.length){ renderChips(); renderTickets(); return; }
+  const res = await apiGet('getRequests');
+  if(res.ok){
+    STATE.requests = res.data.reverse();
+    STATE.requestsLoadedAt = Date.now();
+    renderChips(); renderTickets();
+  }
+}
+
+function renderTickets(){
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  let list = STATE.requests.filter(r=>{
+    const matchQ = !q || [r.Name, r.Department, r.ToolName].join(' ').toLowerCase().includes(q);
+    let matchStatus = true;
+    if(STATE.statusFilter==='เกินกำหนด') matchStatus = isOverdue(r);
+    else if(STATE.statusFilter!=='ทั้งหมด') matchStatus = r.Status===STATE.statusFilter;
+    return matchQ && matchStatus;
+  });
+  const box = document.getElementById('ticketList');
+  if(list.length===0){ box.innerHTML = '<div class="empty">ไม่พบรายการ</div>'; return; }
+  box.innerHTML = list.map(r=>{
+    const overdue = isOverdue(r);
+    return `
+    <div class="ticket st-${r.Status} ${overdue?'overdue':''}">
+      <div class="id mono">${r.ID}</div>
+      <div class="toolname">${escHtml(r.ToolName)}</div>
+      <div class="meta">
+        ผู้ยืม: ${escHtml(r.Name)} · ${escHtml(r.Department)}<br>
+        ยืม: <span class="mono">${fmtDate(r.BorrowDateTime)}</span> → คืน: <span class="mono">${fmtDate(r.ExpectedReturnDateTime)}</span>
+      </div>
+      <div style="margin-top:8px;">
+        <span class="badge ${r.Status}">${r.Status}</span>
+        ${overdue?'<span class="badge overdue">เกินกำหนดคืน</span>':''}
+      </div>
+      ${photoTag(r.PhotoURL)}
+      ${r.RequestNote?`<div class="hint" style="margin-top:6px;">หมายเหตุ: ${escHtml(r.RequestNote)}</div>`:''}
+      ${r.Status==='อนุมัติแล้ว'?`<div class="actions"><button class="ghost" onclick="openReturnModal('${r.ID}')">แจ้งคืนเครื่องมือ</button></div>`:''}
+      ${r.Status==='ปฏิเสธ' && r.RejectReason?`<div class="hint">เหตุผล: ${escHtml(r.RejectReason)}</div>`:''}
+      ${r.Status==='คืนแล้ว'?`<div class="hint">คืนเมื่อ: <span class="mono">${fmtDate(r.ReturnedAt)}</span> ${r.IsDamaged==='ใช่'?'<span class="badge" style="background:var(--red-soft); color:var(--red);">⚠️ ชำรุด/เสียหาย</span>':''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function fmtDate(v){
+  if(!v) return '-';
+  const d = new Date(v);
+  if(isNaN(d)) return v;
+  const pad = n=>String(n).padStart(2,'0');
+  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+/* แสดงรูปพร้อม fallback: ถ้ารูปโหลดไม่ขึ้น (onerror) จะเปลี่ยนเป็นลิงก์ให้กดเปิดดูตรงๆ แทน ไม่ปล่อยเป็นไอคอนรูปหักเฉยๆ */
+function photoTag(url){
+  if(!url) return '';
+  const safe = escAttr(url);
+  return `<img class="thumb" src="${safe}" onclick="openLightbox('${safe}')" onerror="this.outerHTML='<a class=&quot;hint&quot; href=&quot;${safe}&quot; target=&quot;_blank&quot;>ดูรูปหลักฐาน (เปิดลิงก์)</a>'">`;
+}
+function openLightbox(url){
+  if(!url) return;
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  const safe = escAttr(url);
+  lb.innerHTML = `<img src="${safe}" onerror="this.parentElement.innerHTML='<a href=&quot;${safe}&quot; target=&quot;_blank&quot; style=&quot;color:#fff&quot;>เปิดรูปในแท็บใหม่</a>'">`;
+  lb.onclick = (ev)=>{ if(ev.target===lb) lb.remove(); };
+  document.body.appendChild(lb);
+}
+
+/* แสดงรูป "ก่อนยืม" กับ "หลังคืน" เทียบข้างกัน สำหรับมุมมองผู้ดูแลระบบที่ต้องตรวจสอบสภาพเครื่องมือ */
+function photoPairTag(beforeUrl, afterUrl){
+  if(!beforeUrl && !afterUrl) return '';
+  const col = (label, url) => `
+    <div style="flex:1; min-width:0;">
+      <div class="hint" style="margin-bottom:4px;">${label}</div>
+      ${url ? photoTag(url) : '<div class="hint">— ไม่มีรูป —</div>'}
+    </div>`;
+  return `<div style="display:flex; gap:10px; margin-top:8px;">${col('ก่อนยืม', beforeUrl)}${col('หลังคืน', afterUrl)}</div>`;
+}
+
+/* ===== RETURN MODAL ===== */
+let returnTargetId = null;
+function openReturnModal(id){
+  returnTargetId = id;
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.id = 'returnModalBg';
+  bg.innerHTML = `
+    <div class="modal">
+      <h3>แจ้งคืนเครื่องมือ</h3>
+      <label>รูปถ่ายสภาพตอนคืน<span class="req"> *</span></label>
+      <input type="file" accept="image/*" capture="environment" id="returnPhotoInput">
+      <label>หมายเหตุ (ถ้ามี)</label>
+      <textarea id="returnNoteInput" rows="2" placeholder="เช่น สภาพเรียบร้อยดี หรือรายละเอียดความเสียหาย"></textarea>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:14px; cursor:pointer;">
+        <input type="checkbox" id="returnDamagedInput" style="width:auto;">
+        <span style="font-weight:600; color:var(--red);">พบว่าอุปกรณ์ชำรุด/เสียหาย</span>
+      </label>
+      <div class="hint">ถ้าเลือกข้อนี้ ระบบจะแจ้งเตือนผู้ดูแลทันทีเป็นกรณีเร่งด่วน</div>
+      <button class="primary" onclick="confirmReturn()">ยืนยันการคืน</button>
+      <button class="ghost" style="width:100%; margin-top:8px;" onclick="document.getElementById('returnModalBg').remove()">ยกเลิก</button>
+    </div>`;
+  document.body.appendChild(bg);
+}
+async function confirmReturn(){
+  const file = document.getElementById('returnPhotoInput').files[0];
+  if(!file){ toast('กรุณาแนบรูปถ่ายสภาพตอนคืนก่อนยืนยัน'); return; }
+  const note = document.getElementById('returnNoteInput').value.trim();
+  const isDamaged = document.getElementById('returnDamagedInput').checked;
+  const returnPhoto = await compressImage(file);
+  const res = await apiPost('markReturned', { id: returnTargetId, returnPhoto, note, isDamaged });
+  if(res.ok){ toast('บันทึกการคืนแล้ว'); document.getElementById('returnModalBg').remove(); loadRequests(true); }
+  else toast('เกิดข้อผิดพลาด: '+res.error);
+}
+
+/* ===== ADMIN ===== */
+function checkPin(){
+  const pin = document.getElementById('pinInput').value;
+  apiPost('verifyPin', {pin}).then(res=>{
+    if(res.ok && res.valid){
+      sessionStorage.setItem('isAdmin','1');
+      sessionStorage.setItem('adminPin', pin); // เก็บไว้ใช้ยืนยันตอนสั่งลบ (เฉพาะช่วง session นี้)
+      document.getElementById('pinGate').style.display='none';
+      document.getElementById('adminPanel').style.display='block';
+      loadAdminData();
+    } else {
+      document.getElementById('pinError').textContent = 'รหัสไม่ถูกต้อง';
+    }
+  });
+}
+function logoutAdmin(){
+  sessionStorage.removeItem('isAdmin');
+  sessionStorage.removeItem('adminPin');
+  document.getElementById('pinGate').style.display='block';
+  document.getElementById('adminPanel').style.display='none';
+  document.getElementById('pinInput').value='';
+}
+if(sessionStorage.getItem('isAdmin')==='1'){
+  document.getElementById('pinGate').style.display='none';
+  document.getElementById('adminPanel').style.display='block';
+}
+
+async function loadAdminData(){
+  await loadRequests(true);
+  renderPending();
+  renderToolAdminList();
+  renderDeptAdminList();
+  renderSummaryReport();
+  initAdminHistoryFilters();
+  renderAdminHistory();
+  document.getElementById('set_siteName').value = STATE.settings.SiteName || '';
+  document.getElementById('set_adminEmail').value = STATE.settings.AdminEmail || '';
+  document.getElementById('lineStatusHint').textContent = STATE.settings.LineConnected
+    ? '✓ ตั้งค่า LINE ไว้แล้ว (พิมพ์ทับช่องด้านบนถ้าต้องการเปลี่ยน token)'
+    : 'ยังไม่ได้ตั้งค่า';
+  if(STATE.settings.LogoURL){
+    document.getElementById('logoPreview').src = STATE.settings.LogoURL;
+    document.getElementById('logoPreview').style.display='inline-block';
+    document.getElementById('logoHint').textContent = 'โลโก้ปัจจุบัน';
+  }
+}
+function renderPending(){
+  const pending = STATE.requests.filter(r=>r.Status==='รออนุมัติ');
+  const box = document.getElementById('pendingList');
+  if(pending.length===0){ box.innerHTML = '<div class="empty">ไม่มีคำขอรออนุมัติ</div>'; return; }
+  box.innerHTML = pending.map(r=>`
+    <div class="ticket st-รออนุมัติ">
+      <div class="id mono">${r.ID}</div>
+      <div class="toolname">${escHtml(r.ToolName)}</div>
+      <div class="meta">
+        ${escHtml(r.Name)} · ${escHtml(r.Department)}<br>
+        ยืม <span class="mono">${fmtDate(r.BorrowDateTime)}</span> → คืน <span class="mono">${fmtDate(r.ExpectedReturnDateTime)}</span>
+      </div>
+      ${photoTag(r.PhotoURL)}
+      ${r.RequestNote?`<div class="hint" style="margin-top:6px;">หมายเหตุจากผู้ยืม: ${escHtml(r.RequestNote)}</div>`:''}
+      <div class="actions">
+        <button class="ghost" onclick="approveReq('${r.ID}')">อนุมัติ</button>
+        <button class="ghost danger" onclick="rejectReq('${r.ID}')">ปฏิเสธ</button>
+      </div>
+    </div>`).join('');
+}
+async function approveReq(id){
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('approveRequest', {id, approvedBy:'ผู้ดูแลระบบ', pin});
+  if(res.ok){
+    toast('อนุมัติแล้ว');
+    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
+  } else {
+    toast('อนุมัติไม่สำเร็จ: '+(res.error || 'ไม่ทราบสาเหตุ — ลองรีเฟรชหน้าเว็บแล้วลองใหม่'));
+  }
+}
+async function rejectReq(id){
+  const reason = prompt('ระบุเหตุผลที่ปฏิเสธ (ถ้ามี):') || '';
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('rejectRequest', {id, reason, pin});
+  if(res.ok){
+    toast('ปฏิเสธคำขอแล้ว');
+    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
+  } else {
+    toast('ปฏิเสธไม่สำเร็จ: '+(res.error || 'ไม่ทราบสาเหตุ — ลองรีเฟรชหน้าเว็บแล้วลองใหม่'));
+  }
+}
+
+/* ===== ประวัติทั้งหมด (มุมมองผู้ดูแล) — กรองละเอียด + ดูรูปก่อน/หลัง + ส่งออก PDF ===== */
+const ADM_STATUS_OPTIONS = ['ทั้งหมด','รออนุมัติ','อนุมัติแล้ว','เกินกำหนด','คืนแล้ว','ปฏิเสธ'];
+const ADM_HISTORY_PAGE_SIZE = 15; // แสดงทีละ 15 รายการ กันหน้ายาวเกินไปเมื่อข้อมูลเยอะขึ้นเรื่อยๆ
+let admHistoryLimit = ADM_HISTORY_PAGE_SIZE;
+let ADM_STATE = { statusFilter: 'ทั้งหมด' };
+
+function initAdminHistoryFilters(){
+  const deptSel = document.getElementById('adm_filterDept');
+  const toolSel = document.getElementById('adm_filterTool');
+  deptSel.innerHTML = '<option value="">ทุกแผนก/กลุ่ม</option>' + STATE.departments.map(d=>`<option value="${escAttr(d)}">${escHtml(d)}</option>`).join('');
+  toolSel.innerHTML = '<option value="">ทุกเครื่องมือ</option>' + STATE.tools.map(t=>`<option value="${escAttr(t)}">${escHtml(t)}</option>`).join('');
+  deptSel.onchange = renderAdminHistory;
+  toolSel.onchange = renderAdminHistory;
+  document.getElementById('adm_dateFrom').onchange = renderAdminHistory;
+  document.getElementById('adm_dateTo').onchange = renderAdminHistory;
+  let admSearchDebounce;
+  document.getElementById('adm_search').oninput = ()=>{ clearTimeout(admSearchDebounce); admSearchDebounce = setTimeout(renderAdminHistory, 150); };
+
+  document.getElementById('adm_statusChips').innerHTML = ADM_STATUS_OPTIONS.map(s=>
+    `<div class="chip ${s===ADM_STATE.statusFilter?'active':''}" onclick="setAdmFilter('${s}')">${s}</div>`).join('');
+}
+function setAdmFilter(s){ ADM_STATE.statusFilter = s; initAdminHistoryFilters(); renderAdminHistory(); }
+
+function getFilteredAdminHistory(){
+  const dept = document.getElementById('adm_filterDept').value;
+  const tool = document.getElementById('adm_filterTool').value;
+  const dateFrom = document.getElementById('adm_dateFrom').value; // YYYY-MM-DD
+  const dateTo = document.getElementById('adm_dateTo').value;
+  const q = document.getElementById('adm_search').value.trim().toLowerCase();
+
+  return STATE.requests.filter(r=>{
+    if(dept && r.Department!==dept) return false;
+    if(tool && r.ToolName!==tool) return false;
+    if(q && !([r.Name, r.ToolName, r.Department].join(' ').toLowerCase().includes(q))) return false;
+    if(ADM_STATE.statusFilter==='เกินกำหนด' && !isOverdue(r)) return false;
+    else if(ADM_STATE.statusFilter!=='ทั้งหมด' && ADM_STATE.statusFilter!=='เกินกำหนด' && r.Status!==ADM_STATE.statusFilter) return false;
+    if(dateFrom || dateTo){
+      const bd = new Date(r.BorrowDateTime);
+      if(dateFrom && bd < new Date(dateFrom+'T00:00:00')) return false;
+      if(dateTo && bd > new Date(dateTo+'T23:59:59')) return false;
+    }
+    return true;
+  });
+}
+
+function renderAdminHistory(reset=true){
+  if(reset) admHistoryLimit = ADM_HISTORY_PAGE_SIZE;
+  const list = getFilteredAdminHistory();
+  const box = document.getElementById('adminHistoryList');
+  if(!box) return;
+  if(list.length===0){ box.innerHTML = '<div class="empty">ไม่พบรายการตามตัวกรองนี้</div>'; return; }
+  const shown = list.slice(0, admHistoryLimit);
+  const remaining = list.length - shown.length;
+  box.innerHTML = `<div class="hint" style="margin-bottom:8px;">พบ ${list.length} รายการ${remaining>0?` (แสดง ${shown.length} รายการแรก)`:''}</div>` +
+    shown.map(r=>{
+    const overdue = isOverdue(r);
+    return `
+    <div class="ticket st-${r.Status} ${overdue?'overdue':''}">
+      <div class="id mono">${r.ID}</div>
+      <div class="toolname">${escHtml(r.ToolName)}</div>
+      <div class="meta">
+        ${escHtml(r.Name)} · ${escHtml(r.Department)}<br>
+        ยืม <span class="mono">${fmtDate(r.BorrowDateTime)}</span> → คืน <span class="mono">${fmtDate(r.ExpectedReturnDateTime)}</span>
+        ${r.Status==='คืนแล้ว' ? `<br>คืนจริง <span class="mono">${fmtDate(r.ReturnedAt)}</span>` : ''}
+      </div>
+      <div style="margin-top:8px;">
+        <span class="badge ${r.Status}">${r.Status}</span>
+        ${overdue?'<span class="badge overdue">เกินกำหนดคืน</span>':''}
+        ${r.IsDamaged==='ใช่'?'<span class="badge" style="background:var(--red-soft); color:var(--red);">⚠️ ชำรุด/เสียหาย</span>':''}
+      </div>
+      ${photoPairTag(r.PhotoURL, r.ReturnPhotoURL)}
+      ${r.RequestNote?`<div class="hint" style="margin-top:6px;">หมายเหตุตอนขอยืม: ${escHtml(r.RequestNote)}</div>`:''}
+      ${r.RejectReason?`<div class="hint" style="margin-top:6px;">เหตุผลที่ปฏิเสธ: ${escHtml(r.RejectReason)}</div>`:''}
+      ${r.ReturnNote?`<div class="hint" style="margin-top:6px;">หมายเหตุตอนคืน: ${escHtml(r.ReturnNote)}</div>`:''}
+    </div>`;
+  }).join('') +
+    (remaining>0 ? `<button class="ghost" style="width:100%; margin-top:8px;" onclick="admHistoryLimit+=${ADM_HISTORY_PAGE_SIZE}; renderAdminHistory(false);">แสดงเพิ่มเติม (เหลืออีก ${remaining} รายการ)</button>` : '');
+}
+
+async function exportPDF(){
+  const ids = getFilteredAdminHistory().map(r=>r.ID);
+  if(ids.length===0){ toast('ไม่มีข้อมูลให้ส่งออกตามตัวกรองนี้'); return; }
+  toast('กำลังสร้าง PDF... รอสักครู่');
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('exportPdf', {ids, pin});
+  if(!res.ok || !res.pdfBase64){
+    showNotifyResultModal('สร้าง PDF ไม่สำเร็จ\n\n' + (res.error || 'ไม่ได้รับไฟล์กลับมาจากเซิร์ฟเวอร์ (ไม่ทราบสาเหตุ)'));
+    return;
+  }
+  try{
+    const byteChars = atob(res.pdfBase64);
+    const byteNumbers = new Array(byteChars.length);
+    for(let i=0;i<byteChars.length;i++) byteNumbers[i]=byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNumbers)], {type:'application/pdf'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = res.filename || 'รายงานยืม-คืนเครื่องมือ.pdf';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast('ส่งออก PDF สำเร็จ');
+  } catch(err){
+    toast('แปลงไฟล์ PDF ไม่สำเร็จ: '+err);
+  }
+}
+
+/* จัดการรายการเครื่องมือ/แผนกแบบ optimistic: อัปเดตหน้าจอทันทีจากข้อมูลในเครื่อง
+   ไม่ต้องรอยิง getTools/getDepartments ซ้ำ ทำให้กดเพิ่ม/ลบแล้วรู้สึกไวขึ้นมาก */
+function renderToolAdminList(){
+  document.getElementById('toolList').innerHTML = STATE.tools.map(t=>`
+    <div class="listitem"><span>${escHtml(t)}</span>
+    <span style="display:flex; gap:6px;">
+      <button class="ghost" onclick="showToolQR('${encodeURIComponent(t)}')">QR</button>
+      <button class="ghost danger" onclick="deleteTool('${encodeURIComponent(t)}')">ลบ</button>
+    </span></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
+}
+async function addTool(){
+  const v = document.getElementById('newTool').value.trim();
+  if(!v || STATE.tools.includes(v)) return;
+  document.getElementById('newTool').value='';
+  STATE.tools.push(v); renderToolSelect(); renderToolAdminList();
+  const res = await apiPost('addTool', {name:v});
+  if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
+}
+async function deleteTool(encodedName){
+  const name = decodeURIComponent(encodedName);
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('deleteTool', {name, pin});
+  if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
+  STATE.tools = STATE.tools.filter(t=>t!==name);
+  renderToolSelect(); renderToolAdminList();
+}
+function showToolQR(encodedName){
+  const toolName = decodeURIComponent(encodedName);
+  const url = `${location.origin}${location.pathname}?tool=${encodeURIComponent(toolName)}`;
+  const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(url)}`;
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal" style="text-align:center;">
+    <h3>${escHtml(toolName)}</h3>
+    <img src="${qrImg}" style="width:100%; max-width:260px; border-radius:8px;">
+    <div class="hint" style="margin:10px 0;">พิมพ์แล้วนำไปติดที่ตัวเครื่องมือ สแกนแล้วจะเปิดฟอร์มพร้อมเลือกเครื่องมือนี้อัตโนมัติ</div>
+    <a href="${qrImg}" target="_blank" class="ghost" style="display:block; text-align:center; text-decoration:none; padding:8px 12px; margin-bottom:8px;">เปิดรูป QR เต็มขนาด (บันทึก/พิมพ์)</a>
+    <button class="ghost" style="width:100%;" onclick="this.closest('.modal-bg').remove()">ปิด</button>
+  </div>`;
+  bg.onclick = (ev)=>{ if(ev.target===bg) bg.remove(); };
+  document.body.appendChild(bg);
+}
+
+function renderDeptAdminList(){
+  document.getElementById('deptList').innerHTML = STATE.departments.map(d=>`
+    <div class="listitem"><span>${escHtml(d)}</span>
+    <button class="ghost danger" onclick="deleteDept('${encodeURIComponent(d)}')">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
+}
+async function addDept(){
+  const v = document.getElementById('newDept').value.trim();
+  if(!v || STATE.departments.includes(v)) return;
+  document.getElementById('newDept').value='';
+  STATE.departments.push(v); renderDeptSelect(); renderDeptAdminList();
+  const res = await apiPost('addDepartment', {name:v});
+  if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
+}
+async function deleteDept(encodedName){
+  const name = decodeURIComponent(encodedName);
+  const pin = sessionStorage.getItem('adminPin');
+  const res = await apiPost('deleteDepartment', {name, pin});
+  if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
+  STATE.departments = STATE.departments.filter(d=>d!==name);
+  renderDeptSelect(); renderDeptAdminList();
+}
+
+/* ===== รายงานสรุปผู้ยืม (ข้อมูลเชิงวินัยการใช้เครื่องมือ) =====
+   นับทั้งรายการที่ "กำลังเกินกำหนด" อยู่ตอนนี้ และรายการที่ "คืนช้ากว่ากำหนด" ไปแล้วในอดีต
+   เพื่อให้เห็นภาพวินัยการคืนของแต่ละคนจริงๆ ไม่ใช่แค่สถานะปัจจุบัน */
+function wasReturnedLate(r){
+  return r.Status==='คืนแล้ว' && r.ReturnedAt && new Date(r.ReturnedAt) > new Date(r.ExpectedReturnDateTime);
+}
+function renderSummaryReport(){
+  const box = document.getElementById('summaryReport');
+  if(!box) return;
+  const byName = {};
+  STATE.requests.forEach(r=>{
+    if(!byName[r.Name]) byName[r.Name] = { total:0, overdue:0, returned:0 };
+    byName[r.Name].total++;
+    if(isOverdue(r) || wasReturnedLate(r)) byName[r.Name].overdue++;
+    if(r.Status==='คืนแล้ว') byName[r.Name].returned++;
+  });
+  const names = Object.keys(byName).sort((a,b)=> byName[b].overdue-byName[a].overdue || byName[b].total-byName[a].total);
+  if(names.length===0){ box.innerHTML = '<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
+  box.innerHTML = names.map(n=>`
+    <div class="listitem" style="cursor:pointer;" onclick="viewPersonHistory('${encodeURIComponent(n)}')">
+      <span>${escHtml(n)}</span>
+      <span class="hint mono">ยืมทั้งหมด ${byName[n].total} · คืนแล้ว ${byName[n].returned} ${byName[n].overdue?`· <span style="color:var(--red)">คืนช้า/เกินกำหนด ${byName[n].overdue}</span>`:''}</span>
+    </div>`).join('');
+}
+function viewPersonHistory(encodedName){
+  const name = decodeURIComponent(encodedName);
+  document.querySelector('.tab-btn[data-tab="status"]').click();
+  document.getElementById('searchBox').value = name;
+  STATE.statusFilter = 'ทั้งหมด';
+  renderChips(); renderTickets();
+}
+
+/* ===== ส่งออก CSV ===== */
+function exportCSV(){
+  if(STATE.requests.length===0){ toast('ยังไม่มีข้อมูลให้ส่งออก'); return; }
+  const headers = ['รหัส','วันที่ยื่นคำขอ','ผู้ยืม','แผนก','เครื่องมือ','วันเวลาที่ยืม','วันเวลาที่คาดว่าจะคืน','สถานะ','ผู้อนุมัติ','วันที่คืนจริง','หมายเหตุตอนยืม','หมายเหตุตอนคืน','ชำรุด/เสียหาย'];
+  const rows = STATE.requests.map(r=>[r.ID, fmtDate(r.CreatedAt), r.Name, r.Department, r.ToolName,
+    fmtDate(r.BorrowDateTime), fmtDate(r.ExpectedReturnDateTime), r.Status, r.ApprovedBy||'', fmtDate(r.ReturnedAt), r.RequestNote||'', r.ReturnNote||'', r.IsDamaged==='ใช่'?'ใช่':'']);
+  const csvBody = [headers, ...rows].map(row=>
+    row.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(',')
+  ).join('\r\n');
+  // เติม BOM (\uFEFF) ไว้หน้าไฟล์ ไม่งั้นเปิดใน Excel บน Windows แล้วภาษาไทยจะเพี้ยน
+  const blob = new Blob(['\uFEFF'+csvBody], {type:'text/csv;charset=utf-8;'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `รายงานยืม-คืนเครื่องมือ_${toLocalInput(new Date()).slice(0,10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+async function saveSettings(){
+  const siteName = document.getElementById('set_siteName').value.trim();
+  const adminEmail = document.getElementById('set_adminEmail').value.trim();
+  const lineToken = document.getElementById('set_lineToken').value.trim();
+  const btn = document.getElementById('saveSettingsBtn');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  const settingsPayload = { SiteName: siteName, AdminEmail: adminEmail };
+  if(lineToken) settingsPayload.LineChannelAccessToken = lineToken; // ส่งเฉพาะตอนกรอกใหม่ ไม่งั้นเว้นว่างไว้จะไม่ไปลบ token เดิม
+  const pin = sessionStorage.getItem('adminPin');
+  const saveRes = await apiPost('updateSettings', { settings: settingsPayload, pin });
+  if(!saveRes.ok){ toast('บันทึกไม่สำเร็จ: '+saveRes.error); btn.disabled=false; btn.textContent='บันทึกการตั้งค่า'; return; }
+  const logoFile = document.getElementById('set_logo').files[0];
+  if(logoFile){
+    const base64 = await compressImage(logoFile, 400, 0.85);
+    const res = await apiPost('updateLogo', {logo: base64, pin});
+    if(res.ok) STATE.settings.LogoURL = res.url;
+    else toast('อัปโหลดโลโก้ไม่สำเร็จ: '+res.error);
+  }
+  STATE.settings.SiteName = siteName;
+  STATE.settings.AdminEmail = adminEmail;
+  if(lineToken){ STATE.settings.LineConnected = true; document.getElementById('set_lineToken').value=''; document.getElementById('lineStatusHint').textContent='✓ ตั้งค่า LINE ไว้แล้ว (พิมพ์ทับช่องด้านบนถ้าต้องการเปลี่ยน token)'; }
+  applySettings();
+  btn.disabled = false; btn.textContent = 'บันทึกการตั้งค่า';
+  toast('บันทึกการตั้งค่าเรียบร้อย');
+}
+
+async function saveSettingsThenTest(){
+  await saveSettings();
+  toast('กำลังส่งข้อความทดสอบ...');
+  const res = await apiPost('testNotify', {});
+  if(!res.ok){ showNotifyResultModal(`เกิดข้อผิดพลาด: ${res.error}`); return; }
+  const r = res.result || {};
+  const lines = [];
+  if(r.email && r.email.attempted){
+    lines.push(r.email.ok ? '✅ อีเมล: ส่งสำเร็จ' : `❌ อีเมล: ส่งไม่สำเร็จ — ${r.email.error}`);
+  } else {
+    lines.push('⚪ อีเมล: ยังไม่ได้ตั้งค่า (ข้ามไป)');
+  }
+  if(r.line && r.line.attempted){
+    lines.push(r.line.ok ? '✅ LINE: ส่งสำเร็จ' : `❌ LINE: ส่งไม่สำเร็จ — ${r.line.error}`);
+  } else {
+    lines.push(`⚪ LINE: ${r.line ? r.line.error : 'ยังไม่ได้ตั้งค่า'}`);
+  }
+  showNotifyResultModal(lines.join('\n'));
+}
+function showNotifyResultModal(text){
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal">
+    <h3>ผลการทดสอบแจ้งเตือน</h3>
+    <div style="white-space:pre-line; font-size:13.5px; line-height:1.8;">${escHtml(text)}</div>
+    <button class="ghost" style="width:100%; margin-top:14px;" onclick="this.closest('.modal-bg').remove()">ปิด</button>
+  </div>`;
+  bg.onclick = (ev)=>{ if(ev.target===bg) bg.remove(); };
+  document.body.appendChild(bg);
+}
+
+init();
 </script>
 </body>
 </html>
