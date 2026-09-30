@@ -223,7 +223,7 @@
   <!-- ===== TAB: STATUS ===== -->
   <section id="tab-status" style="display:none;">
     <div class="searchbar">
-      <input type="text" id="searchBox" placeholder="ค้นหาชื่อ / แผนก / เครื่องมือ">
+      <input type="text" id="searchBox" placeholder="ค้นหาชื่อ / แผนก / เครื่องมือ / รหัสคำขอ">
       <button class="ghost" onclick="loadRequests()">รีเฟรช</button>
     </div>
     <div class="chips" id="statusChips"></div>
@@ -267,8 +267,8 @@
           <div><label style="margin-top:0;">ตั้งแต่วันที่ยืม</label><input type="date" id="adm_dateFrom"></div>
           <div><label style="margin-top:0;">ถึงวันที่ยืม</label><input type="date" id="adm_dateTo"></div>
         </div>
-        <label>ค้นหาชื่อ/เครื่องมือ</label>
-        <input type="text" id="adm_search" placeholder="พิมพ์เพื่อค้นหา">
+        <label>ค้นหาชื่อ/เครื่องมือ/รหัสคำขอ</label>
+        <input type="text" id="adm_search" placeholder="พิมพ์ชื่อ เครื่องมือ หรือรหัสคำขอ เช่น REQ2026...">
         <div class="chips" id="adm_statusChips" style="margin-top:12px;"></div>
         <div id="adminHistoryList"></div>
         <button class="ghost" style="width:100%; margin-top:10px;" onclick="exportPDF()">ส่งออกรายการที่กรองไว้เป็น PDF</button>
@@ -679,7 +679,7 @@ async function loadRequests(force=true){
 function renderTickets(){
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   let list = STATE.requests.filter(r=>{
-    const matchQ = !q || [r.Name, r.Department, r.ToolName].join(' ').toLowerCase().includes(q);
+    const matchQ = !q || [r.Name, r.Department, r.ToolName, r.ID].join(' ').toLowerCase().includes(q);
     let matchStatus = true;
     if(STATE.statusFilter==='เกินกำหนด') matchStatus = isOverdue(r);
     else if(STATE.statusFilter!=='ทั้งหมด') matchStatus = r.Status===STATE.statusFilter;
@@ -983,7 +983,7 @@ function getFilteredAdminHistory(){
   return STATE.requests.filter(r=>{
     if(dept && r.Department!==dept) return false;
     if(tool && r.ToolName!==tool) return false;
-    if(q && !([r.Name, r.ToolName, r.Department].join(' ').toLowerCase().includes(q))) return false;
+    if(q && !([r.Name, r.ToolName, r.Department, r.ID].join(' ').toLowerCase().includes(q))) return false;
     if(ADM_STATE.statusFilter==='เกินกำหนด' && !isOverdue(r)) return false;
     else if(ADM_STATE.statusFilter!=='ทั้งหมด' && ADM_STATE.statusFilter!=='เกินกำหนด' && r.Status!==ADM_STATE.statusFilter) return false;
     if(dateFrom || dateTo){
