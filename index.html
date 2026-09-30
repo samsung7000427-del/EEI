@@ -160,13 +160,22 @@
   </div>
 </header>
 
-<nav>
+<nav id="mainNav">
   <button class="tab-btn active" data-tab="form">ยื่นคำขอยืม</button>
   <button class="tab-btn" data-tab="status">สถานะการยืม</button>
   <button class="tab-btn" data-tab="admin">ผู้ดูแลระบบ</button>
 </nav>
 
-<main>
+<div id="userGate" class="pin-box card" style="display:none; margin-top:40px;">
+  <h2 style="text-align:center;">เข้าสู่ระบบ</h2>
+  <div class="hint" style="text-align:center; margin-bottom:10px;">ระบบนี้จำกัดเฉพาะผู้ที่มีรหัสเข้าใช้งานเท่านั้น</div>
+  <input type="password" id="userSecretInput" placeholder="รหัสเข้าใช้งาน" style="text-align:left; letter-spacing:normal; font-size:14px;">
+  <button class="primary" onclick="doUserLogin()">เข้าสู่ระบบ</button>
+  <div class="hint" id="userLoginError" style="color:var(--red); min-height:16px;"></div>
+</div>
+
+<main id="mainContent">
+
 
   <!-- ===== TAB: FORM ===== -->
   <section id="tab-form">
@@ -225,9 +234,20 @@
   <section id="tab-admin" style="display:none;">
     <div id="pinGate" class="pin-box card">
       <h2 style="text-align:center;">เข้าสู่โหมดผู้ดูแลระบบ</h2>
-      <input type="password" id="pinInput" inputmode="numeric" placeholder="••••" maxlength="8">
-      <button class="primary" onclick="checkPin()">ยืนยันรหัส</button>
-      <div class="hint" id="pinError" style="color:var(--red);"></div>
+      <input type="password" id="pinInput" placeholder="รหัสผ่านผู้ดูแลระบบ" style="text-align:left; letter-spacing:normal; font-size:14px;">
+      <button class="primary" onclick="checkPin()">เข้าสู่ระบบ</button>
+      <div class="hint" id="pinError" style="color:var(--red); min-height:16px;"></div>
+    </div>
+
+    <div id="mustChangeGate" class="card" style="display:none;">
+      <h2>ต้องตั้งรหัสผ่านใหม่ก่อนใช้งาน</h2>
+      <div class="hint" style="margin-bottom:10px;">รหัสที่ใช้ล็อกอินเป็นรหัสชั่วคราว กรุณาตั้งรหัสผ่านใหม่ที่ปลอดภัยกว่า (อย่างน้อย 10 ตัวอักษร มีทั้งตัวอักษรและตัวเลข)</div>
+      <label>รหัสชั่วคราว (รหัสเดิมที่เพิ่งใช้ล็อกอิน)</label>
+      <input type="password" id="mc_current">
+      <label>รหัสผ่านใหม่</label>
+      <input type="password" id="mc_new">
+      <button class="primary" onclick="doForcedChange()">ตั้งรหัสผ่านใหม่</button>
+      <div class="hint" id="mustChangeError" style="color:var(--red);"></div>
     </div>
 
     <div id="adminPanel" style="display:none;">
@@ -306,6 +326,32 @@
         <button class="primary" id="saveSettingsBtn" onclick="saveSettings()">บันทึกการตั้งค่า</button>
       </div>
 
+      <div class="card">
+        <h2>ความปลอดภัย</h2>
+        <div class="hint" style="margin-bottom:8px;">รหัสผ่านผู้ดูแลระบบ (สำหรับเข้าแท็บนี้)</div>
+        <label>รหัสผ่านผู้ดูแลปัจจุบัน</label>
+        <input type="password" id="sec_currentAdmin" placeholder="ต้องกรอกทุกครั้งที่จะเปลี่ยนค่าด้านล่าง">
+        <label>รหัสผ่านผู้ดูแลใหม่ (อย่างน้อย 10 ตัวอักษร มีทั้งตัวอักษรและตัวเลข)</label>
+        <input type="password" id="sec_newAdmin">
+        <button class="ghost" style="width:100%; margin-top:8px;" onclick="changeAdminPassword()">เปลี่ยนรหัสผ่านผู้ดูแล</button>
+
+        <div class="hint" style="margin:16px 0 8px; padding-top:12px; border-top:1px solid var(--border);">
+          รหัสเข้าใช้งานสำหรับพนักงานทั่วไป (ไม่บังคับ — ถ้าตั้งไว้ ทุกคนต้องกรอกรหัสนี้ก่อนเข้าใช้หน้าฟอร์ม/สถานะ)
+        </div>
+        <div class="hint" id="userGateStatusHint">กำลังตรวจสอบสถานะ...</div>
+        <label>รหัสเข้าใช้งานพนักงานใหม่ (อย่างน้อย 8 ตัวอักษร)</label>
+        <input type="password" id="sec_newUser">
+        <button class="ghost" style="width:100%; margin-top:8px;" onclick="setUserCode()">ตั้ง/เปลี่ยนรหัสเข้าใช้งานพนักงาน</button>
+        <button class="ghost danger" style="width:100%; margin-top:8px;" onclick="clearUserCode()">ปิดการใช้งานรหัสพนักงาน (กลับเป็นเข้าได้ทุกคน)</button>
+      </div>
+
+      <div class="card">
+        <h2>ประวัติการใช้งานระบบ (Audit Log)</h2>
+        <div class="hint" style="margin-bottom:8px;">บันทึกการเข้าสู่ระบบ อนุมัติ/ปฏิเสธ แก้ไขตั้งค่า และการลบ ย้อนหลังล่าสุด 100 รายการ</div>
+        <button class="ghost" style="width:100%; margin-bottom:10px;" onclick="loadAuditLog()">โหลด/รีเฟรชประวัติ</button>
+        <div id="auditLogList"></div>
+      </div>
+
       <button class="ghost" style="width:100%;" onclick="logoutAdmin()">ออกจากโหมดผู้ดูแลระบบ</button>
     </div>
   </section>
@@ -318,7 +364,7 @@
 /* ========= CONFIG =========
    วางลิงก์ Web app ที่ได้จาก Deploy ของ Google Apps Script ตรงนี้
 */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyg0YUZ0BqDsdCbk-K1Qs7wna-q_GTaOg2XD79OFxDDbvvBzEwiLdX8Ykxa3TiXxW_3/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwnn-ex1ai3SGihSOO8oADD0gRbgioNxJnrAnDLX5rE3gCdWBgQowATdPhUQCQOk0qM/exec';
 const REQUESTS_CACHE_MS = 20000; // ไม่โหลดข้อมูลซ้ำถ้าเพิ่งโหลดไปไม่เกิน 20 วิ ทำให้สลับแท็บไปมาไวขึ้น
 
 let STATE = { settings:{}, tools:[], departments:[], requests:[], statusFilter:'ทั้งหมด', requestsLoadedAt:0 };
@@ -329,17 +375,6 @@ function toast(msg){
   setTimeout(()=>t.classList.remove('show'), 2200);
 }
 
-async function apiGet(action, params={}){
-  try{
-    const usp = new URLSearchParams({action, ...params});
-    const res = await fetch(`${API_URL}?${usp.toString()}`);
-    const text = await res.text();
-    try { return JSON.parse(text); }
-    catch(e){ return { ok:false, error: 'เซิร์ฟเวอร์ตอบกลับไม่ใช่ข้อมูลที่ถูกต้อง (มักเกิดจาก Deploy เวอร์ชันใหม่ยังไม่มีผล หรือสิทธิ์เข้าถึงเว็บแอปตั้งไว้ไม่ถูกต้อง)' }; }
-  } catch(err){
-    return { ok:false, error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+err };
-  }
-}
 async function apiPost(action, payload={}){
   try{
     const res = await fetch(API_URL, {
@@ -353,6 +388,27 @@ async function apiPost(action, payload={}){
   } catch(err){
     return { ok:false, error: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: '+err };
   }
+}
+/* เรียก apiPost แบบแนบ token ของผู้ใช้ทั่วไปให้อัตโนมัติ (ถ้ามี) และจัดการกรณีเซสชันหมดอายุ/ต้องล็อกอินใหม่ */
+async function apiUser(action, payload={}){
+  const res = await apiPost(action, { ...payload, token: sessionStorage.getItem('userToken') || undefined });
+  if(!res.ok && (res.code==='NEED_LOGIN')){
+    sessionStorage.removeItem('userToken');
+    showUserGate('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+  }
+  return res;
+}
+/* เรียก apiPost แบบแนบ token ของผู้ดูแลให้อัตโนมัติ และจัดการกรณีเซสชันหมดอายุ/ต้องตั้งรหัสใหม่ */
+async function apiAdmin(action, payload={}){
+  const res = await apiPost(action, { ...payload, token: sessionStorage.getItem('adminToken') || undefined });
+  if(!res.ok && (res.code==='NEED_ADMIN')){
+    sessionStorage.removeItem('adminToken');
+    document.getElementById('adminPanel').style.display='none';
+    document.getElementById('mustChangeGate').style.display='none';
+    document.getElementById('pinGate').style.display='block';
+    document.getElementById('pinError').textContent = 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่';
+  }
+  return res;
 }
 
 function fileToBase64(file){
@@ -402,7 +458,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
       document.getElementById('tab-'+t).style.display = (t===btn.dataset.tab)?'block':'none';
     });
     if(btn.dataset.tab==='status') loadRequests(false);
-    if(btn.dataset.tab==='admin' && sessionStorage.getItem('isAdmin')==='1') loadAdminData();
+    if(btn.dataset.tab==='admin'){ applyAdminVisibility(); if(sessionStorage.getItem('adminToken')) loadAdminData(); }
   });
 });
 
@@ -414,16 +470,33 @@ async function init(){
   document.getElementById('f_borrow').value = toLocalInput(new Date());
   bindPhotoDrop();
 
-  // โหลด settings + tools + departments พร้อมกันในคำขอเดียว (เดิมยิง 3 รอบ ทำให้ช้า)
-  try{
-    const initRes = await apiGet('getInitData');
-    if(initRes.ok){
-      STATE.settings = initRes.settings || {};
-      STATE.tools = initRes.tools || [];
-      STATE.departments = initRes.departments || [];
-      applySettings(); renderToolSelect(); renderDeptSelect();
+  // เช็กก่อนว่าเปิดใช้ "รหัสเข้าใช้งานพนักงาน" ไว้หรือไม่ (ไม่ต้องล็อกอินก็เรียกข้อมูลนี้ได้)
+  const authInfo = await apiPost('getAuthInfo');
+  if(authInfo.ok){
+    STATE.settings = { SiteName: authInfo.siteName, LogoURL: authInfo.logoUrl };
+    applySettings();
+    if(authInfo.gateEnabled && !sessionStorage.getItem('userToken')){
+      showUserGate();
+      return; // รอผู้ใช้กรอกรหัสก่อน ค่อยโหลดส่วนที่เหลือใน doUserLogin()
     }
-  } catch(err){ toast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ: '+err); }
+  }
+  await afterUserAuth();
+}
+
+async function afterUserAuth(){
+  document.getElementById('userGate').style.display = 'none';
+  document.getElementById('mainNav').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'block';
+
+  const initRes = await apiUser('getInitData');
+  if(initRes.ok){
+    STATE.settings = initRes.settings || STATE.settings;
+    STATE.tools = initRes.tools || [];
+    STATE.departments = initRes.departments || [];
+    applySettings(); renderToolSelect(); renderDeptSelect();
+  } else if(initRes.code !== 'NEED_LOGIN'){
+    toast('โหลดข้อมูลไม่สำเร็จ: '+initRes.error);
+  }
 
   // ถ้ามี ?tool=ชื่อเครื่องมือ ต่อท้ายลิงก์ (มาจากการสแกน QR) ให้เลือกเครื่องมือนั้นให้อัตโนมัติ
   const qsTool = new URLSearchParams(location.search).get('tool');
@@ -434,7 +507,27 @@ async function init(){
     else { sel.value = '__custom__'; document.getElementById('f_toolCustom').style.display='block'; document.getElementById('f_toolCustom').value = qsTool; }
   }
 
-  if(sessionStorage.getItem('isAdmin')==='1'){ loadAdminData(); }
+  if(sessionStorage.getItem('adminToken')){ loadAdminData(); }
+}
+
+function showUserGate(message){
+  document.getElementById('mainNav').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('userGate').style.display = 'block';
+  document.getElementById('userLoginError').textContent = message || '';
+}
+
+async function doUserLogin(){
+  const secret = document.getElementById('userSecretInput').value;
+  if(!secret){ document.getElementById('userLoginError').textContent = 'กรุณากรอกรหัส'; return; }
+  const res = await apiPost('login', { type:'user', secret });
+  if(res.ok){
+    sessionStorage.setItem('userToken', res.token);
+    document.getElementById('userSecretInput').value = '';
+    await afterUserAuth();
+  } else {
+    document.getElementById('userLoginError').textContent = res.error || 'เข้าสู่ระบบไม่สำเร็จ';
+  }
 }
 function toLocalInput(d){
   const pad = n=>String(n).padStart(2,'0');
@@ -527,10 +620,10 @@ document.getElementById('requestForm').addEventListener('submit', async (e)=>{
     // ถ้าเลือก "เพิ่มแผนก/กลุ่มของฉันเอง" และยังไม่มีชื่อนี้ในระบบ ให้เพิ่มเข้าไปก่อนส่งคำขอ
     // (ผู้ใช้ทั่วไปเพิ่มได้ แต่ลบได้เฉพาะผู้ดูแลระบบในแท็บผู้ดูแลระบบเท่านั้น)
     if(deptSel==='__custom__' && !STATE.departments.includes(department)){
-      const addRes = await apiPost('addDepartment', {name: department});
+      const addRes = await apiUser('addDepartment', {name: department});
       if(addRes.ok){ STATE.departments.push(department); renderDeptSelect(); }
     }
-    const res = await apiPost('submitRequest', {
+    const res = await apiUser('submitRequest', {
       name, department, toolName, borrowDateTime, expectedReturnDateTime,
       photo: selectedPhotoBase64, note
     });
@@ -575,7 +668,7 @@ function isOverdue(r){
 async function loadRequests(force=true){
   const isFresh = (Date.now() - STATE.requestsLoadedAt) < REQUESTS_CACHE_MS;
   if(!force && isFresh && STATE.requests.length){ renderChips(); renderTickets(); return; }
-  const res = await apiGet('getRequests');
+  const res = await apiUser('getRequests');
   if(res.ok){
     STATE.requests = res.data.reverse();
     STATE.requestsLoadedAt = Date.now();
@@ -680,36 +773,115 @@ async function confirmReturn(){
   const note = document.getElementById('returnNoteInput').value.trim();
   const isDamaged = document.getElementById('returnDamagedInput').checked;
   const returnPhoto = await compressImage(file);
-  const res = await apiPost('markReturned', { id: returnTargetId, returnPhoto, note, isDamaged });
+  const res = await apiUser('markReturned', { id: returnTargetId, returnPhoto, note, isDamaged });
   if(res.ok){ toast('บันทึกการคืนแล้ว'); document.getElementById('returnModalBg').remove(); loadRequests(true); }
   else toast('เกิดข้อผิดพลาด: '+res.error);
 }
 
 /* ===== ADMIN ===== */
+function applyAdminVisibility(){
+  const hasToken = !!sessionStorage.getItem('adminToken');
+  document.getElementById('pinGate').style.display = hasToken ? 'none' : 'block';
+  document.getElementById('adminPanel').style.display = hasToken ? 'block' : 'none';
+  document.getElementById('mustChangeGate').style.display = 'none';
+}
 function checkPin(){
-  const pin = document.getElementById('pinInput').value;
-  apiPost('verifyPin', {pin}).then(res=>{
-    if(res.ok && res.valid){
-      sessionStorage.setItem('isAdmin','1');
-      sessionStorage.setItem('adminPin', pin); // เก็บไว้ใช้ยืนยันตอนสั่งลบ (เฉพาะช่วง session นี้)
-      document.getElementById('pinGate').style.display='none';
-      document.getElementById('adminPanel').style.display='block';
-      loadAdminData();
+  const secret = document.getElementById('pinInput').value;
+  document.getElementById('pinError').textContent = '';
+  apiPost('login', {type:'admin', secret}).then(res=>{
+    if(res.ok){
+      sessionStorage.setItem('adminToken', res.token);
+      document.getElementById('pinInput').value = '';
+      if(res.mustChange){
+        document.getElementById('pinGate').style.display='none';
+        document.getElementById('adminPanel').style.display='none';
+        document.getElementById('mustChangeGate').style.display='block';
+        document.getElementById('mc_current').value = secret; // สะดวก ไม่ต้องพิมพ์รหัสชั่วคราวซ้ำ
+      } else {
+        applyAdminVisibility();
+        loadAdminData();
+      }
     } else {
-      document.getElementById('pinError').textContent = 'รหัสไม่ถูกต้อง';
+      document.getElementById('pinError').textContent = res.error || 'เข้าสู่ระบบไม่สำเร็จ';
     }
   });
 }
+async function doForcedChange(){
+  const current = document.getElementById('mc_current').value;
+  const newSecret = document.getElementById('mc_new').value;
+  document.getElementById('mustChangeError').textContent = '';
+  const res = await apiAdmin('changeCredentials', {current, which:'admin', newSecret});
+  if(res.ok){
+    sessionStorage.removeItem('adminToken');
+    document.getElementById('mc_current').value=''; document.getElementById('mc_new').value='';
+    document.getElementById('mustChangeGate').style.display='none';
+    document.getElementById('pinGate').style.display='block';
+    document.getElementById('pinError').textContent = 'ตั้งรหัสผ่านใหม่สำเร็จแล้ว กรุณาเข้าสู่ระบบอีกครั้งด้วยรหัสใหม่';
+  } else {
+    document.getElementById('mustChangeError').textContent = res.error || 'ตั้งรหัสผ่านใหม่ไม่สำเร็จ';
+  }
+}
 function logoutAdmin(){
-  sessionStorage.removeItem('isAdmin');
-  sessionStorage.removeItem('adminPin');
-  document.getElementById('pinGate').style.display='block';
-  document.getElementById('adminPanel').style.display='none';
+  apiAdmin('logout');
+  sessionStorage.removeItem('adminToken');
+  applyAdminVisibility();
   document.getElementById('pinInput').value='';
 }
-if(sessionStorage.getItem('isAdmin')==='1'){
-  document.getElementById('pinGate').style.display='none';
-  document.getElementById('adminPanel').style.display='block';
+applyAdminVisibility();
+
+async function changeAdminPassword(){
+  const current = document.getElementById('sec_currentAdmin').value;
+  const newSecret = document.getElementById('sec_newAdmin').value;
+  if(!current || !newSecret){ toast('กรุณากรอกรหัสผ่านปัจจุบันและรหัสผ่านใหม่'); return; }
+  const res = await apiAdmin('changeCredentials', {current, which:'admin', newSecret});
+  if(res.ok){
+    document.getElementById('sec_currentAdmin').value=''; document.getElementById('sec_newAdmin').value='';
+    toast('เปลี่ยนรหัสผ่านสำเร็จ กรุณาเข้าสู่ระบบใหม่ด้วยรหัสใหม่');
+    sessionStorage.removeItem('adminToken');
+    applyAdminVisibility();
+  } else {
+    toast('เปลี่ยนรหัสผ่านไม่สำเร็จ: '+res.error);
+  }
+}
+async function setUserCode(){
+  const current = document.getElementById('sec_currentAdmin').value;
+  const newSecret = document.getElementById('sec_newUser').value;
+  if(!current){ toast('กรุณากรอกรหัสผ่านผู้ดูแลปัจจุบันในช่องด้านบนก่อน'); return; }
+  if(!newSecret){ toast('กรุณากรอกรหัสเข้าใช้งานพนักงานใหม่'); return; }
+  const res = await apiAdmin('changeCredentials', {current, which:'user', newSecret});
+  if(res.ok){
+    document.getElementById('sec_newUser').value='';
+    toast('ตั้งรหัสเข้าใช้งานพนักงานสำเร็จ');
+    loadAdminData();
+  } else {
+    toast('ตั้งรหัสไม่สำเร็จ: '+res.error);
+  }
+}
+async function clearUserCode(){
+  const current = document.getElementById('sec_currentAdmin').value;
+  if(!current){ toast('กรุณากรอกรหัสผ่านผู้ดูแลปัจจุบันในช่องด้านบนก่อน'); return; }
+  if(!confirm('ปิดรหัสเข้าใช้งานพนักงาน? หลังจากนี้ใครก็ตามที่มีลิงก์จะเข้าฟอร์มได้ทันทีโดยไม่ต้องกรอกรหัส')) return;
+  const res = await apiAdmin('changeCredentials', {current, which:'clearUser'});
+  if(res.ok){
+    toast('ปิดรหัสเข้าใช้งานพนักงานแล้ว');
+    loadAdminData();
+  } else {
+    toast('ทำรายการไม่สำเร็จ: '+res.error);
+  }
+}
+async function loadAuditLog(){
+  const box = document.getElementById('auditLogList');
+  box.innerHTML = '<div class="empty">กำลังโหลด...</div>';
+  const res = await apiAdmin('getAuditLog');
+  if(!res.ok){ box.innerHTML = '<div class="empty">โหลดไม่สำเร็จ: '+escHtml(res.error||'')+'</div>'; return; }
+  if(!res.data || res.data.length===0){ box.innerHTML = '<div class="empty">ยังไม่มีประวัติ</div>'; return; }
+  box.innerHTML = res.data.map(e=>{
+    const color = e.result==='fail' ? 'var(--red)' : (e.result==='warn' ? 'var(--amber)' : 'var(--ink-muted)');
+    return `<div class="listitem">
+      <span class="mono" style="font-size:11px;">${escHtml(e.time)} · ${escHtml(e.actor)} · ${escHtml(e.action)}${e.detail?(' · '+escHtml(e.detail)):''}</span>
+      <span class="hint" style="color:${color};">${escHtml(e.result||'')}</span>
+    </div>`;
+  }).join('');
 }
 
 async function loadAdminData(){
@@ -720,15 +892,22 @@ async function loadAdminData(){
   renderSummaryReport();
   initAdminHistoryFilters();
   renderAdminHistory();
-  document.getElementById('set_siteName').value = STATE.settings.SiteName || '';
-  document.getElementById('set_adminEmail').value = STATE.settings.AdminEmail || '';
-  document.getElementById('lineStatusHint').textContent = STATE.settings.LineConnected
-    ? '✓ ตั้งค่า LINE ไว้แล้ว (พิมพ์ทับช่องด้านบนถ้าต้องการเปลี่ยน token)'
-    : 'ยังไม่ได้ตั้งค่า';
-  if(STATE.settings.LogoURL){
-    document.getElementById('logoPreview').src = STATE.settings.LogoURL;
-    document.getElementById('logoPreview').style.display='inline-block';
-    document.getElementById('logoHint').textContent = 'โลโก้ปัจจุบัน';
+  const admRes = await apiAdmin('getAdminSettings');
+  if(admRes.ok){
+    const d = admRes.data;
+    document.getElementById('set_siteName').value = d.SiteName || '';
+    document.getElementById('set_adminEmail').value = d.AdminEmail || '';
+    document.getElementById('lineStatusHint').textContent = d.LineConnected
+      ? '✓ ตั้งค่า LINE ไว้แล้ว (พิมพ์ทับช่องด้านบนถ้าต้องการเปลี่ยน token)'
+      : 'ยังไม่ได้ตั้งค่า';
+    document.getElementById('userGateStatusHint').textContent = d.gateEnabled
+      ? '✓ เปิดใช้งานอยู่ — ทุกคนต้องกรอกรหัสนี้ก่อนเข้าฟอร์ม/สถานะ'
+      : 'ปิดอยู่ — ใครก็ตามที่มีลิงก์เข้าใช้งานได้ทันทีโดยไม่ต้องกรอกรหัส';
+    if(d.LogoURL){
+      document.getElementById('logoPreview').src = d.LogoURL;
+      document.getElementById('logoPreview').style.display='inline-block';
+      document.getElementById('logoHint').textContent = 'โลโก้ปัจจุบัน';
+    }
   }
 }
 function renderPending(){
@@ -752,8 +931,7 @@ function renderPending(){
     </div>`).join('');
 }
 async function approveReq(id){
-  const pin = sessionStorage.getItem('adminPin');
-  const res = await apiPost('approveRequest', {id, approvedBy:'ผู้ดูแลระบบ', pin});
+  const res = await apiAdmin('approveRequest', {id});
   if(res.ok){
     toast('อนุมัติแล้ว');
     await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
@@ -763,8 +941,7 @@ async function approveReq(id){
 }
 async function rejectReq(id){
   const reason = prompt('ระบุเหตุผลที่ปฏิเสธ (ถ้ามี):') || '';
-  const pin = sessionStorage.getItem('adminPin');
-  const res = await apiPost('rejectRequest', {id, reason, pin});
+  const res = await apiAdmin('rejectRequest', {id, reason});
   if(res.ok){
     toast('ปฏิเสธคำขอแล้ว');
     await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
