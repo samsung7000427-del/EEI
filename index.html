@@ -357,6 +357,7 @@
   </section>
 
 </main>
+<div id="serverBuildTag" style="text-align:center; font-size:11px; color:#94A3B8; padding:8px 0 20px;"></div>
 
 <div id="toast" class="toast"></div>
 
@@ -364,7 +365,7 @@
 /* ========= CONFIG =========
    วางลิงก์ Web app ที่ได้จาก Deploy ของ Google Apps Script ตรงนี้
 */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyIYxRWidsCxTNrXaE_tbTwYUnjOLJv1_bcBMtN10cGVoDC4jthRLMv7v5qKHznJObR/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxqsk1lk9Fas2LXMpK-2hUk-4SJBlGffBVjo7k7ipY_fMxxPXipZOvhrznNfdFwcLfl/exec';
 const REQUESTS_CACHE_MS = 20000; // ไม่โหลดข้อมูลซ้ำถ้าเพิ่งโหลดไปไม่เกิน 20 วิ ทำให้สลับแท็บไปมาไวขึ้น
 
 let STATE = { settings:{}, tools:[], departments:[], requests:[], statusFilter:'ทั้งหมด', requestsLoadedAt:0 };
@@ -475,6 +476,8 @@ async function init(){
   if(authInfo.ok){
     STATE.settings = { SiteName: authInfo.siteName, LogoURL: authInfo.logoUrl };
     applySettings();
+    const verEl = document.getElementById('serverBuildTag');
+    if(verEl) verEl.textContent = 'เวอร์ชันเซิร์ฟเวอร์: ' + (authInfo.serverBuild || 'ไม่ทราบ (โค้ดเก่ากว่าที่คาด — ยังไม่ได้ deploy เวอร์ชันล่าสุด)');
     if(authInfo.gateEnabled && !sessionStorage.getItem('userToken')){
       showUserGate();
       return; // รอผู้ใช้กรอกรหัสก่อน ค่อยโหลดส่วนที่เหลือใน doUserLogin()
@@ -1033,8 +1036,7 @@ async function exportPDF(){
   const ids = getFilteredAdminHistory().map(r=>r.ID);
   if(ids.length===0){ toast('ไม่มีข้อมูลให้ส่งออกตามตัวกรองนี้'); return; }
   toast('กำลังสร้าง PDF... รอสักครู่');
-  const pin = sessionStorage.getItem('adminPin');
-  const res = await apiPost('exportPdf', {ids, pin});
+  const res = await apiAdmin('exportPdf', {ids});
   if(!res.ok || !res.pdfBase64){
     showNotifyResultModal('สร้าง PDF ไม่สำเร็จ\n\n' + (res.error || 'ไม่ได้รับไฟล์กลับมาจากเซิร์ฟเวอร์ (ไม่ทราบสาเหตุ)'));
     return;
@@ -1075,8 +1077,7 @@ async function addTool(){
 }
 async function deleteTool(encodedName){
   const name = decodeURIComponent(encodedName);
-  const pin = sessionStorage.getItem('adminPin');
-  const res = await apiPost('deleteTool', {name, pin});
+  const res = await apiAdmin('deleteTool', {name});
   if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
   STATE.tools = STATE.tools.filter(t=>t!==name);
   renderToolSelect(); renderToolAdminList();
@@ -1113,8 +1114,7 @@ async function addDept(){
 }
 async function deleteDept(encodedName){
   const name = decodeURIComponent(encodedName);
-  const pin = sessionStorage.getItem('adminPin');
-  const res = await apiPost('deleteDepartment', {name, pin});
+  const res = await apiAdmin('deleteDepartment', {name});
   if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
   STATE.departments = STATE.departments.filter(d=>d!==name);
   renderDeptSelect(); renderDeptAdminList();
@@ -1178,13 +1178,12 @@ async function saveSettings(){
   btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
   const settingsPayload = { SiteName: siteName, AdminEmail: adminEmail };
   if(lineToken) settingsPayload.LineChannelAccessToken = lineToken; // ส่งเฉพาะตอนกรอกใหม่ ไม่งั้นเว้นว่างไว้จะไม่ไปลบ token เดิม
-  const pin = sessionStorage.getItem('adminPin');
-  const saveRes = await apiPost('updateSettings', { settings: settingsPayload, pin });
+  const saveRes = await apiAdmin('updateSettings', { settings: settingsPayload });
   if(!saveRes.ok){ toast('บันทึกไม่สำเร็จ: '+saveRes.error); btn.disabled=false; btn.textContent='บันทึกการตั้งค่า'; return; }
   const logoFile = document.getElementById('set_logo').files[0];
   if(logoFile){
     const base64 = await compressImage(logoFile, 400, 0.85);
-    const res = await apiPost('updateLogo', {logo: base64, pin});
+    const res = await apiAdmin('updateLogo', {logo: base64});
     if(res.ok) STATE.settings.LogoURL = res.url;
     else toast('อัปโหลดโลโก้ไม่สำเร็จ: '+res.error);
   }
