@@ -130,6 +130,15 @@
   .pin-box input{text-align:center; letter-spacing:6px; font-size:20px;}
 
   .listitem{display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:13.5px;}
+  .scroll-box{
+    max-height:420px; overflow-y:auto; border:1px solid var(--border); border-radius:10px;
+    padding:4px 12px; background:#FCFDFD;
+  }
+  .scroll-box .listitem:last-child{border-bottom:none;}
+  .scroll-box::-webkit-scrollbar{width:8px;}
+  .scroll-box::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+  .scroll-box::-webkit-scrollbar-thumb:hover{background:#94A3B8;}
+  .panel-count{font-size:11.5px; color:var(--ink-muted); margin:2px 0 8px;}
   .listitem:last-child{border-bottom:none;}
 
   .modal-bg{position:fixed; inset:0; background:rgba(31,41,51,.45); display:flex; align-items:flex-end; justify-content:center; z-index:50;}
@@ -270,20 +279,25 @@
         <label>ค้นหาชื่อ/เครื่องมือ/รหัสคำขอ</label>
         <input type="text" id="adm_search" placeholder="พิมพ์ชื่อ เครื่องมือ หรือรหัสคำขอ เช่น REQ2026...">
         <div class="chips" id="adm_statusChips" style="margin-top:12px;"></div>
-        <div id="adminHistoryList"></div>
+        <div id="adminHistoryCount" class="panel-count"></div>
+        <div class="scroll-box"><div id="adminHistoryList"></div></div>
         <button class="ghost" style="width:100%; margin-top:10px;" onclick="exportPDF()">ส่งออกรายการที่กรองไว้เป็น PDF</button>
       </div>
 
       <div class="card">
         <h2>รายงานสรุปผู้ยืม</h2>
-        <div id="summaryReport"></div>
+        <input type="text" id="summary_search" placeholder="ค้นหาชื่อผู้ยืม" style="margin-bottom:10px;">
+        <div id="summaryCount" class="panel-count"></div>
+        <div class="scroll-box"><div id="summaryReport"></div></div>
         <button class="ghost" style="width:100%; margin-top:10px;" onclick="exportCSV()">ส่งออกรายงานทั้งหมดเป็น CSV (เปิดใน Excel ได้)</button>
       </div>
 
       <div class="card">
         <h2>จัดการรายการเครื่องมือ</h2>
         <div class="hint" style="margin-bottom:8px;">กดไอคอน QR เพื่อพิมพ์ติดไว้ที่ตัวเครื่องมือ สแกนแล้วเปิดฟอร์มพร้อมเลือกเครื่องมือนั้นให้อัตโนมัติ</div>
-        <div id="toolList"></div>
+        <input type="text" id="tool_search" placeholder="ค้นหาชื่อเครื่องมือ" style="margin-bottom:10px;">
+        <div id="toolCount" class="panel-count"></div>
+        <div class="scroll-box"><div id="toolList"></div></div>
         <div class="tag-input-row">
           <input type="text" id="newTool" placeholder="เพิ่มชื่อเครื่องมือใหม่">
           <button class="ghost" onclick="addTool()">เพิ่ม</button>
@@ -292,7 +306,9 @@
 
       <div class="card">
         <h2>จัดการแผนก/กลุ่ม</h2>
-        <div id="deptList"></div>
+        <input type="text" id="dept_search" placeholder="ค้นหาแผนก/กลุ่ม" style="margin-bottom:10px;">
+        <div id="deptCount" class="panel-count"></div>
+        <div class="scroll-box"><div id="deptList"></div></div>
         <div class="tag-input-row">
           <input type="text" id="newDept" placeholder="เพิ่มแผนก/กลุ่มใหม่">
           <button class="ghost" onclick="addDept()">เพิ่ม</button>
@@ -1002,12 +1018,17 @@ function renderAdminHistory(reset=true){
   if(reset) admHistoryLimit = ADM_HISTORY_PAGE_SIZE;
   const list = getFilteredAdminHistory();
   const box = document.getElementById('adminHistoryList');
+  const countEl = document.getElementById('adminHistoryCount');
   if(!box) return;
-  if(list.length===0){ box.innerHTML = '<div class="empty">ไม่พบรายการตามตัวกรองนี้</div>'; return; }
+  if(list.length===0){
+    if(countEl) countEl.textContent = '';
+    box.innerHTML = '<div class="empty">ไม่พบรายการตามตัวกรองนี้</div>';
+    return;
+  }
   const shown = list.slice(0, admHistoryLimit);
   const remaining = list.length - shown.length;
-  box.innerHTML = `<div class="hint" style="margin-bottom:8px;">พบ ${list.length} รายการ${remaining>0?` (แสดง ${shown.length} รายการแรก)`:''}</div>` +
-    shown.map(r=>{
+  if(countEl) countEl.textContent = `พบ ${list.length} รายการ${remaining>0?` (แสดง ${shown.length} รายการแรก เลื่อนดู/กดแสดงเพิ่มเติมสำหรับรายการที่เหลือ)`:''}`;
+  box.innerHTML = shown.map(r=>{
     const overdue = isOverdue(r);
     return `
     <div class="ticket st-${r.Status} ${overdue?'overdue':''}">
@@ -1058,15 +1079,23 @@ async function exportPDF(){
 }
 
 /* จัดการรายการเครื่องมือ/แผนกแบบ optimistic: อัปเดตหน้าจอทันทีจากข้อมูลในเครื่อง
-   ไม่ต้องรอยิง getTools/getDepartments ซ้ำ ทำให้กดเพิ่ม/ลบแล้วรู้สึกไวขึ้นมาก */
+   ไม่ต้องรอยิง getTools/getDepartments ซ้ำ ทำให้กดเพิ่ม/ลบแล้วรู้สึกไวขึ้นมาก
+   เพิ่มช่องค้นหา + กล่องเลื่อนความสูงคงที่ กันไม่ให้หน้าแอดมินยาวเกินไปเมื่อรายการเยอะขึ้น */
 function renderToolAdminList(){
-  document.getElementById('toolList').innerHTML = STATE.tools.map(t=>`
+  const q = (document.getElementById('tool_search').value || '').trim().toLowerCase();
+  const list = q ? STATE.tools.filter(t => t.toLowerCase().includes(q)) : STATE.tools;
+  document.getElementById('toolCount').textContent = q ? `พบ ${list.length} จากทั้งหมด ${STATE.tools.length} รายการ` : `ทั้งหมด ${STATE.tools.length} รายการ`;
+  document.getElementById('toolList').innerHTML = list.map(t=>`
     <div class="listitem"><span>${escHtml(t)}</span>
     <span style="display:flex; gap:6px;">
       <button class="ghost" onclick="showToolQR('${encodeURIComponent(t)}')">QR</button>
       <button class="ghost danger" onclick="deleteTool('${encodeURIComponent(t)}')">ลบ</button>
-    </span></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
+    </span></div>`).join('') || '<div class="empty">ไม่พบรายการ</div>';
 }
+let toolSearchDebounce;
+document.getElementById('tool_search').addEventListener('input', ()=>{
+  clearTimeout(toolSearchDebounce); toolSearchDebounce = setTimeout(renderToolAdminList, 150);
+});
 async function addTool(){
   const v = document.getElementById('newTool').value.trim();
   if(!v || STATE.tools.includes(v)) return;
@@ -1100,10 +1129,17 @@ function showToolQR(encodedName){
 }
 
 function renderDeptAdminList(){
-  document.getElementById('deptList').innerHTML = STATE.departments.map(d=>`
+  const q = (document.getElementById('dept_search').value || '').trim().toLowerCase();
+  const list = q ? STATE.departments.filter(d => d.toLowerCase().includes(q)) : STATE.departments;
+  document.getElementById('deptCount').textContent = q ? `พบ ${list.length} จากทั้งหมด ${STATE.departments.length} รายการ` : `ทั้งหมด ${STATE.departments.length} รายการ`;
+  document.getElementById('deptList').innerHTML = list.map(d=>`
     <div class="listitem"><span>${escHtml(d)}</span>
-    <button class="ghost danger" onclick="deleteDept('${encodeURIComponent(d)}')">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีรายการ</div>';
+    <button class="ghost danger" onclick="deleteDept('${encodeURIComponent(d)}')">ลบ</button></div>`).join('') || '<div class="empty">ไม่พบรายการ</div>';
 }
+let deptSearchDebounce;
+document.getElementById('dept_search').addEventListener('input', ()=>{
+  clearTimeout(deptSearchDebounce); deptSearchDebounce = setTimeout(renderDeptAdminList, 150);
+});
 async function addDept(){
   const v = document.getElementById('newDept').value.trim();
   if(!v || STATE.departments.includes(v)) return;
@@ -1136,8 +1172,12 @@ function renderSummaryReport(){
     if(isOverdue(r) || wasReturnedLate(r)) byName[r.Name].overdue++;
     if(r.Status==='คืนแล้ว') byName[r.Name].returned++;
   });
-  const names = Object.keys(byName).sort((a,b)=> byName[b].overdue-byName[a].overdue || byName[b].total-byName[a].total);
-  if(names.length===0){ box.innerHTML = '<div class="empty">ยังไม่มีข้อมูล</div>'; return; }
+  const q = (document.getElementById('summary_search').value || '').trim().toLowerCase();
+  let names = Object.keys(byName).sort((a,b)=> byName[b].overdue-byName[a].overdue || byName[b].total-byName[a].total);
+  const totalPeople = names.length;
+  if(q) names = names.filter(n => n.toLowerCase().includes(q));
+  document.getElementById('summaryCount').textContent = q ? `พบ ${names.length} จากทั้งหมด ${totalPeople} คน` : `ทั้งหมด ${totalPeople} คน`;
+  if(names.length===0){ box.innerHTML = '<div class="empty">ไม่พบข้อมูล</div>'; return; }
   box.innerHTML = names.map(n=>`
     <div class="listitem" style="cursor:pointer;" onclick="viewPersonHistory('${encodeURIComponent(n)}')">
       <span>${escHtml(n)}</span>
@@ -1151,6 +1191,10 @@ function viewPersonHistory(encodedName){
   STATE.statusFilter = 'ทั้งหมด';
   renderChips(); renderTickets();
 }
+let summarySearchDebounce;
+document.getElementById('summary_search').addEventListener('input', ()=>{
+  clearTimeout(summarySearchDebounce); summarySearchDebounce = setTimeout(renderSummaryReport, 150);
+});
 
 /* ===== ส่งออก CSV ===== */
 function exportCSV(){
