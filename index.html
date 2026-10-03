@@ -19,6 +19,7 @@
     --amber:#B45309; --amber-soft:#FEF3C7;
     --red:#B91C1C; --red-soft:#FEE2E2;
     --slate:#475569; --slate-soft:#E2E8F0;
+    --purple:#6D28D9; --purple-soft:#EDE9FE;
     --radius:14px;
   }
   *{box-sizing:border-box;}
@@ -188,6 +189,11 @@
 
   <!-- ===== TAB: FORM ===== -->
   <section id="tab-form">
+    <div class="card">
+      <h2>สถานะเครื่องมือตอนนี้</h2>
+      <div class="hint" style="margin-bottom:8px;">ตรวจสอบก่อนกรอกฟอร์ม — เครื่องมือที่ไม่ว่างจะเลือกไม่ได้ในฟอร์มด้านล่าง</div>
+      <div class="scroll-box" style="max-height:220px;"><div id="toolStatusOverview"></div></div>
+    </div>
     <div class="card">
       <h2>แบบฟอร์มขอยืมเครื่องมือ/อุปกรณ์</h2>
       <form id="requestForm">
@@ -512,7 +518,7 @@ async function afterUserAuth(){
     STATE.settings = initRes.settings || STATE.settings;
     STATE.tools = initRes.tools || [];
     STATE.departments = initRes.departments || [];
-    applySettings(); renderToolSelect(); renderDeptSelect();
+    applySettings(); renderToolSelect(); renderToolStatusOverview(); renderDeptSelect();
   } else if(initRes.code !== 'NEED_LOGIN'){
     toast('โหลดข้อมูลไม่สำเร็จ: '+initRes.error);
   }
@@ -522,8 +528,15 @@ async function afterUserAuth(){
   if(qsTool){
     const sel = document.getElementById('f_toolSelect');
     const opt = [...sel.options].find(o=>o.value===qsTool);
-    if(opt){ sel.value = qsTool; }
-    else { sel.value = '__custom__'; document.getElementById('f_toolCustom').style.display='block'; document.getElementById('f_toolCustom').value = qsTool; }
+    const toolInfo = STATE.tools.find(t=>t.name===qsTool);
+    if(opt && opt.disabled){
+      // เครื่องมือนี้สแกนเจอแต่ไม่ว่างตอนนี้ — แจ้งเหตุผลตรงๆ แทนที่จะปล่อยให้เลือกไม่ติดแบบเงียบๆ
+      toast(`"${qsTool}" ไม่ว่างตอนนี้ (${toolInfo ? toolInfo.status : 'ไม่ว่าง'}) กรุณาเลือกเครื่องมืออื่น`);
+    } else if(opt){
+      sel.value = qsTool;
+    } else {
+      sel.value = '__custom__'; document.getElementById('f_toolCustom').style.display='block'; document.getElementById('f_toolCustom').value = qsTool;
+    }
   }
 
   if(sessionStorage.getItem('adminToken')){ loadAdminData(); }
@@ -566,11 +579,45 @@ function applySettings(){
 }
 function renderToolSelect(){
   const sel = document.getElementById('f_toolSelect');
-  sel.innerHTML = STATE.tools.map(t=>`<option value="${escAttr(t)}">${escHtml(t)}</option>`).join('') +
-    `<option value="__custom__">อื่นๆ (พิมพ์เอง)</option>`;
+  sel.innerHTML = STATE.tools.map(t=>{
+    const avail = t.status === 'พร้อมใช้งาน';
+    const label = avail ? t.name : `${t.name} — ไม่ว่าง (${t.status})`;
+    return `<option value="${escAttr(t.name)}" ${avail?'':'disabled'}>${escHtml(label)}</option>`;
+  }).join('') + `<option value="__custom__">อื่นๆ (พิมพ์เอง)</option>`;
   sel.onchange = ()=>{
     document.getElementById('f_toolCustom').style.display = (sel.value==='__custom__')?'block':'none';
   };
+}
+
+/* ป้ายสถานะเครื่องมือ — ใช้สีประจำแต่ละสถานะให้ตรงกันทั้งหน้าฟอร์ม/แอดมิน ไม่ใช้ CSS class ต่อสถานะ
+   เพราะ "ชำรุด/ปลดระวาง" มีเครื่องหมาย / ซึ่งใช้เป็นชื่อ class ตรงๆ ไม่ได้ */
+function toolStatusStyle(status){
+  switch(status){
+    case 'พร้อมใช้งาน': return {bg:'var(--accent-soft)', fg:'var(--accent)'};
+    case 'กำลังถูกยืม': return {bg:'var(--amber-soft)', fg:'var(--amber)'};
+    case 'ส่งซ่อม': return {bg:'var(--red-soft)', fg:'var(--red)'};
+    case 'ส่งสอบเทียบ': return {bg:'var(--purple-soft)', fg:'var(--purple)'};
+    default: return {bg:'var(--slate-soft)', fg:'var(--slate)'}; // ชำรุด/ปลดระวาง
+  }
+}
+function toolStatusBadge(status){
+  const s = toolStatusStyle(status);
+  return `<span class="badge" style="background:${s.bg}; color:${s.fg};">${escHtml(status)}</span>`;
+}
+
+/* การ์ดสรุปสถานะเครื่องมือทั้งหมด — ให้ทุกคนเห็นก่อนกรอกฟอร์ม ว่าเครื่องมือไหนว่าง/ไม่ว่างเพราะอะไร */
+function renderToolStatusOverview(){
+  const box = document.getElementById('toolStatusOverview');
+  if(!box) return;
+  if(STATE.tools.length===0){ box.innerHTML = '<div class="empty">ยังไม่มีรายการเครื่องมือ</div>'; return; }
+  box.innerHTML = STATE.tools.map(t=>`
+    <div class="listitem">
+      <span>${escHtml(t.name)}</span>
+      <span style="display:flex; align-items:center; gap:8px;">
+        ${t.note ? `<span class="hint" style="max-width:160px; text-align:right;">${escHtml(t.note)}</span>` : ''}
+        ${toolStatusBadge(t.status)}
+      </span>
+    </div>`).join('');
 }
 function renderDeptSelect(){
   const sel = document.getElementById('f_department');
@@ -979,7 +1026,7 @@ function initAdminHistoryFilters(){
   const deptSel = document.getElementById('adm_filterDept');
   const toolSel = document.getElementById('adm_filterTool');
   deptSel.innerHTML = '<option value="">ทุกแผนก/กลุ่ม</option>' + STATE.departments.map(d=>`<option value="${escAttr(d)}">${escHtml(d)}</option>`).join('');
-  toolSel.innerHTML = '<option value="">ทุกเครื่องมือ</option>' + STATE.tools.map(t=>`<option value="${escAttr(t)}">${escHtml(t)}</option>`).join('');
+  toolSel.innerHTML = '<option value="">ทุกเครื่องมือ</option>' + STATE.tools.map(t=>`<option value="${escAttr(t.name)}">${escHtml(t.name)}</option>`).join('');
   deptSel.onchange = renderAdminHistory;
   toolSel.onchange = renderAdminHistory;
   document.getElementById('adm_dateFrom').onchange = renderAdminHistory;
@@ -1083,14 +1130,19 @@ async function exportPDF(){
    เพิ่มช่องค้นหา + กล่องเลื่อนความสูงคงที่ กันไม่ให้หน้าแอดมินยาวเกินไปเมื่อรายการเยอะขึ้น */
 function renderToolAdminList(){
   const q = (document.getElementById('tool_search').value || '').trim().toLowerCase();
-  const list = q ? STATE.tools.filter(t => t.toLowerCase().includes(q)) : STATE.tools;
+  const list = q ? STATE.tools.filter(t => t.name.toLowerCase().includes(q)) : STATE.tools;
   document.getElementById('toolCount').textContent = q ? `พบ ${list.length} จากทั้งหมด ${STATE.tools.length} รายการ` : `ทั้งหมด ${STATE.tools.length} รายการ`;
   document.getElementById('toolList').innerHTML = list.map(t=>`
-    <div class="listitem"><span>${escHtml(t)}</span>
-    <span style="display:flex; gap:6px;">
-      <button class="ghost" onclick="showToolQR('${encodeURIComponent(t)}')">QR</button>
-      <button class="ghost danger" onclick="deleteTool('${encodeURIComponent(t)}')">ลบ</button>
-    </span></div>`).join('') || '<div class="empty">ไม่พบรายการ</div>';
+    <div class="listitem" style="flex-wrap:wrap; gap:6px;">
+      <span>${escHtml(t.name)}</span>
+      <span style="display:flex; align-items:center; gap:6px;">
+        ${toolStatusBadge(t.status)}
+        <button class="ghost" onclick="openToolStatusModal('${encodeURIComponent(t.name)}')">เปลี่ยนสถานะ</button>
+        <button class="ghost" onclick="showToolQR('${encodeURIComponent(t.name)}')">QR</button>
+        <button class="ghost danger" onclick="deleteTool('${encodeURIComponent(t.name)}')">ลบ</button>
+      </span>
+      ${t.note ? `<div class="hint" style="width:100%;">หมายเหตุ: ${escHtml(t.note)}</div>` : ''}
+    </div>`).join('') || '<div class="empty">ไม่พบรายการ</div>';
 }
 let toolSearchDebounce;
 document.getElementById('tool_search').addEventListener('input', ()=>{
@@ -1098,9 +1150,10 @@ document.getElementById('tool_search').addEventListener('input', ()=>{
 });
 async function addTool(){
   const v = document.getElementById('newTool').value.trim();
-  if(!v || STATE.tools.includes(v)) return;
+  if(!v || STATE.tools.some(t=>t.name===v)) return;
   document.getElementById('newTool').value='';
-  STATE.tools.push(v); renderToolSelect(); renderToolAdminList();
+  STATE.tools.push({name:v, status:'พร้อมใช้งาน', note:'', expectedDate:''});
+  renderToolSelect(); renderToolStatusOverview(); renderToolAdminList();
   const res = await apiPost('addTool', {name:v});
   if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
 }
@@ -1108,8 +1161,49 @@ async function deleteTool(encodedName){
   const name = decodeURIComponent(encodedName);
   const res = await apiAdmin('deleteTool', {name});
   if(!res.ok){ toast('ลบไม่สำเร็จ: '+res.error); return; }
-  STATE.tools = STATE.tools.filter(t=>t!==name);
-  renderToolSelect(); renderToolAdminList();
+  STATE.tools = STATE.tools.filter(t=>t.name!==name);
+  renderToolSelect(); renderToolStatusOverview(); renderToolAdminList();
+}
+
+/* ===== เปลี่ยนสถานะเครื่องมือ (พร้อมใช้งาน / ส่งซ่อม / ส่งสอบเทียบ / ชำรุด-ปลดระวาง) =====
+   "กำลังถูกยืม" ไม่อยู่ในตัวเลือกนี้ เพราะระบบตั้ง/ถอนให้อัตโนมัติตอนอนุมัติคำขอ/รับคืนเท่านั้น */
+const TOOL_STATUS_OPTIONS = ['พร้อมใช้งาน','ส่งซ่อม','ส่งสอบเทียบ','ชำรุด/ปลดระวาง'];
+function openToolStatusModal(encodedName){
+  const name = decodeURIComponent(encodedName);
+  const tool = STATE.tools.find(t=>t.name===name);
+  if(!tool) return;
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.id = 'toolStatusModalBg';
+  bg.innerHTML = `<div class="modal">
+    <h3>เปลี่ยนสถานะ: ${escHtml(name)}</h3>
+    ${tool.status==='กำลังถูกยืม' ? '<div class="hint" style="margin-bottom:10px;">เครื่องมือนี้กำลังถูกยืมอยู่ สถานะนี้ระบบคุมอัตโนมัติ ตั้งสถานะอื่นทับได้ถ้าจำเป็น (เช่น ถูกเรียกกลับมาซ่อมฉุกเฉิน)</div>' : ''}
+    <label>สถานะใหม่</label>
+    <select id="toolStatusSelect">
+      ${TOOL_STATUS_OPTIONS.map(s=>`<option value="${escAttr(s)}" ${s===tool.status?'selected':''}>${escHtml(s)}</option>`).join('')}
+    </select>
+    <label>หมายเหตุ (ถ้ามี)</label>
+    <textarea id="toolStatusNote" rows="2" placeholder="เช่น ส่งสอบเทียบที่ บริษัท... / อะไหล่ที่รอเปลี่ยน">${escHtml(tool.note||'')}</textarea>
+    <label>คาดว่าจะพร้อมใช้งานอีกครั้งวันที่ (ถ้าทราบ)</label>
+    <input type="date" id="toolStatusExpected" value="${escAttr(tool.expectedDate||'')}">
+    <button class="primary" onclick="saveToolStatus('${encodeURIComponent(name)}')">บันทึกสถานะ</button>
+    <button class="ghost" style="width:100%; margin-top:8px;" onclick="document.getElementById('toolStatusModalBg').remove()">ยกเลิก</button>
+  </div>`;
+  bg.onclick = (ev)=>{ if(ev.target===bg) bg.remove(); };
+  document.body.appendChild(bg);
+}
+async function saveToolStatus(encodedName){
+  const name = decodeURIComponent(encodedName);
+  const status = document.getElementById('toolStatusSelect').value;
+  const note = document.getElementById('toolStatusNote').value.trim();
+  const expectedDate = document.getElementById('toolStatusExpected').value;
+  const res = await apiAdmin('setToolStatus', {name, status, note, expectedDate});
+  if(!res.ok){ toast('บันทึกไม่สำเร็จ: '+res.error); return; }
+  const tool = STATE.tools.find(t=>t.name===name);
+  if(tool){ tool.status=status; tool.note=note; tool.expectedDate=expectedDate; }
+  document.getElementById('toolStatusModalBg').remove();
+  renderToolSelect(); renderToolStatusOverview(); renderToolAdminList();
+  toast('อัปเดตสถานะเครื่องมือแล้ว');
 }
 function showToolQR(encodedName){
   const toolName = decodeURIComponent(encodedName);
