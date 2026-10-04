@@ -1243,8 +1243,12 @@ async function addDept(){
   if(!v || STATE.departments.includes(v)) return;
   document.getElementById('newDept').value='';
   STATE.departments.push(v); renderDeptSelect(); renderDeptAdminList();
-  const res = await apiPost('addDepartment', {name:v});
-  if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
+  const res = await apiAdmin('addDepartment', {name:v});
+  if(!res.ok){
+    toast('บันทึกไม่สำเร็จ: '+res.error);
+    STATE.departments = STATE.departments.filter(d=>d!==v); // ย้อนกลับการแสดงผลชั่วคราว เพราะบันทึกจริงไม่สำเร็จ
+    renderDeptSelect(); renderDeptAdminList();
+  }
 }
 async function deleteDept(encodedName){
   const name = decodeURIComponent(encodedName);
