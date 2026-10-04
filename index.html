@@ -1154,8 +1154,12 @@ async function addTool(){
   document.getElementById('newTool').value='';
   STATE.tools.push({name:v, status:'พร้อมใช้งาน', note:'', expectedDate:''});
   renderToolSelect(); renderToolStatusOverview(); renderToolAdminList();
-  const res = await apiPost('addTool', {name:v});
-  if(!res.ok) toast('บันทึกไม่สำเร็จ: '+res.error);
+  const res = await apiAdmin('addTool', {name:v});
+  if(!res.ok){
+    toast('บันทึกไม่สำเร็จ: '+res.error);
+    STATE.tools = STATE.tools.filter(t=>t.name!==v); // ย้อนกลับการแสดงผลชั่วคราว เพราะบันทึกจริงไม่สำเร็จ
+    renderToolSelect(); renderToolStatusOverview(); renderToolAdminList();
+  }
 }
 async function deleteTool(encodedName){
   const name = decodeURIComponent(encodedName);
@@ -1336,7 +1340,7 @@ async function saveSettings(){
 async function saveSettingsThenTest(){
   await saveSettings();
   toast('กำลังส่งข้อความทดสอบ...');
-  const res = await apiPost('testNotify', {});
+  const res = await apiAdmin('testNotify', {});
   if(!res.ok){ showNotifyResultModal(`เกิดข้อผิดพลาด: ${res.error}`); return; }
   const r = res.result || {};
   const lines = [];
