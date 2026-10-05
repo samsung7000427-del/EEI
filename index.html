@@ -56,6 +56,45 @@
   nav button:not(.active):hover{background:var(--bg);}
 
   main{max-width:720px; margin:0 auto; padding:20px 16px 60px;}
+  .stat-tiles{display:none;}
+
+  /* ===== โหมดเดสก์ท็อป (จอกว้างตั้งแต่ 1024px) =====
+     มือถือ/แท็บเล็ตแนวตั้งยังคงเป็นคอลัมน์เดียวเหมือนเดิมทุกอย่าง — กฎทั้งหมดในนี้มีผลเฉพาะจอกว้างเท่านั้น
+     แปลงจากการ์ดเรียงต่อกันยาวๆ (ต้องเลื่อนลงเรื่อยๆ) ให้เป็นแดชบอร์ดหลายคอลัมน์ เห็นหลายส่วนพร้อมกันในหน้าจอเดียว */
+  @media(min-width:1024px){
+    main{max-width:1400px; padding:28px 32px 60px;}
+    header{padding:16px 32px;}
+    nav{padding:12px 32px;}
+
+    /* แท็บฟอร์มขอยืม: ฟอร์มอยู่ซ้าย (กว้างกว่า) + สถานะเครื่องมืออยู่ขวาเป็นแถบข้าง ติดอยู่กับที่ตอนเลื่อน */
+    #tab-form{display:grid; grid-template-columns:1.6fr 1fr; gap:20px; align-items:start;}
+    #tab-form > .card:nth-of-type(1){order:2;}
+    #tab-form > .card:nth-of-type(2){order:1;}
+    #tab-form > .card:nth-of-type(1){position:sticky; top:130px;}
+
+    /* แท็บสถานะการยืม: รายการคำขอเรียงเป็นตาราง 2-3 คอลัมน์ แทนที่จะเรียงยาวคอลัมน์เดียว */
+    #ticketList{display:grid; grid-template-columns:repeat(auto-fill, minmax(380px,1fr)); gap:14px; align-items:start;}
+
+    /* แท็บผู้ดูแลระบบ: จัดเป็นแดชบอร์ด 2 คอลัมน์ — การ์ดที่มีเนื้อหาเยอะ (ประวัติทั้งหมด, audit log) กว้างเต็ม */
+    .stat-tiles{
+      display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:4px;
+    }
+    .stat-tile{
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+      padding:16px 18px;
+    }
+    .stat-tile .n{font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:700; line-height:1.1; color:var(--ink);}
+    .stat-tile .l{font-size:12.5px; color:var(--ink-muted); margin-top:4px;}
+    .stat-tile.warn .n{color:var(--amber);}
+    .stat-tile.danger .n{color:var(--red);}
+    .stat-tile.good .n{color:var(--accent);}
+
+    #adminPanel{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;}
+    #adminPanel > .card:nth-of-type(3){grid-column:1/-1;} /* ประวัติทั้งหมด (คอลัมน์ที่ 3 เพราะ #adminStatTiles ที่ไม่ใช่ .card นับรวมเป็นลำดับที่ 1 ด้วย) */
+    #adminPanel > .card:nth-of-type(9){grid-column:1/-1;} /* audit log */
+    #adminPanel > button{grid-column:1/-1;}
+    #adminHistoryList{display:grid; grid-template-columns:repeat(auto-fill, minmax(380px,1fr)); gap:12px; align-items:start;}
+  }
   .card{
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
     padding:18px; margin-bottom:14px;
@@ -266,6 +305,7 @@
     </div>
 
     <div id="adminPanel" style="display:none;">
+      <div id="adminStatTiles" class="stat-tiles"></div>
       <div class="card">
         <h2>รายการรออนุมัติ</h2>
         <div id="pendingList"></div>
@@ -956,6 +996,7 @@ async function loadAdminData(){
   renderToolAdminList();
   renderDeptAdminList();
   renderSummaryReport();
+  renderAdminStatTiles();
   initAdminHistoryFilters();
   renderAdminHistory();
   const admRes = await apiAdmin('getAdminSettings');
@@ -975,6 +1016,32 @@ async function loadAdminData(){
       document.getElementById('logoHint').textContent = 'โลโก้ปัจจุบัน';
     }
   }
+}
+/* แถบสรุปภาพรวม 4 ช่อง บนสุดของแดชบอร์ดผู้ดูแล (แสดงเฉพาะจอกว้าง ≥1024px ตาม CSS .stat-tiles) */
+function renderAdminStatTiles(){
+  const box = document.getElementById('adminStatTiles');
+  if(!box) return;
+  const pendingCount = STATE.requests.filter(r=>r.Status==='รออนุมัติ').length;
+  const overdueCount = STATE.requests.filter(r=>isOverdue(r)).length;
+  const availableCount = STATE.tools.filter(t=>t.status==='พร้อมใช้งาน').length;
+  const unavailableCount = STATE.tools.length - availableCount;
+  box.innerHTML = `
+    <div class="stat-tile warn">
+      <div class="n">${pendingCount}</div>
+      <div class="l">คำขอรออนุมัติ</div>
+    </div>
+    <div class="stat-tile danger">
+      <div class="n">${overdueCount}</div>
+      <div class="l">เกินกำหนดคืน</div>
+    </div>
+    <div class="stat-tile good">
+      <div class="n">${availableCount}</div>
+      <div class="l">เครื่องมือพร้อมใช้งาน</div>
+    </div>
+    <div class="stat-tile">
+      <div class="n">${unavailableCount}</div>
+      <div class="l">เครื่องมือไม่พร้อม (ยืมอยู่/ซ่อม/สอบเทียบ)</div>
+    </div>`;
 }
 function renderPending(){
   const pending = STATE.requests.filter(r=>r.Status==='รออนุมัติ');
@@ -1000,7 +1067,7 @@ async function approveReq(id){
   const res = await apiAdmin('approveRequest', {id});
   if(res.ok){
     toast('อนุมัติแล้ว');
-    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
+    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory(); renderAdminStatTiles();
   } else {
     toast('อนุมัติไม่สำเร็จ: '+(res.error || 'ไม่ทราบสาเหตุ — ลองรีเฟรชหน้าเว็บแล้วลองใหม่'));
   }
@@ -1010,7 +1077,7 @@ async function rejectReq(id){
   const res = await apiAdmin('rejectRequest', {id, reason});
   if(res.ok){
     toast('ปฏิเสธคำขอแล้ว');
-    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory();
+    await loadRequests(true); renderPending(); renderSummaryReport(); renderAdminHistory(); renderAdminStatTiles();
   } else {
     toast('ปฏิเสธไม่สำเร็จ: '+(res.error || 'ไม่ทราบสาเหตุ — ลองรีเฟรชหน้าเว็บแล้วลองใหม่'));
   }
