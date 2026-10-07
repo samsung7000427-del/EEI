@@ -95,6 +95,11 @@
     #adminPanel > button{grid-column:1/-1;}
     #adminHistoryList{display:grid; grid-template-columns:repeat(auto-fill, minmax(380px,1fr)); gap:12px; align-items:start;}
   }
+  /* ใช้ class แทนการตั้ง inline style display ตอนสลับแท็บ — เพราะ inline style มีลำดับความสำคัญสูงกว่า
+     กฎ CSS ทั่วไป (รวมถึง #tab-form{display:grid} ใน media query) ถ้าใช้ element.style.display='block'
+     จะไปทับกฎกริดถาวร ทำให้เค้าโครง 2 คอลัมน์พังตั้งแต่ครั้งแรกที่สลับแท็บไปแล้วกลับมา */
+  .tab-hidden{display:none !important;}
+
   .card{
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
     padding:18px; margin-bottom:14px;
@@ -281,7 +286,7 @@
   </section>
 
   <!-- ===== TAB: STATUS ===== -->
-  <section id="tab-status" style="display:none;">
+  <section id="tab-status" class="tab-hidden">
     <div class="searchbar">
       <input type="text" id="searchBox" placeholder="ค้นหาชื่อ / แผนก / เครื่องมือ / รหัสคำขอ">
       <button class="ghost" onclick="loadRequests()">รีเฟรช</button>
@@ -291,7 +296,7 @@
   </section>
 
   <!-- ===== TAB: ADMIN ===== -->
-  <section id="tab-admin" style="display:none;">
+  <section id="tab-admin" class="tab-hidden">
     <div id="pinGate" class="pin-box card">
       <h2 style="text-align:center;">เข้าสู่โหมดผู้ดูแลระบบ</h2>
       <input type="password" id="pinInput" placeholder="รหัสผ่านผู้ดูแลระบบ" style="text-align:left; letter-spacing:normal; font-size:14px;">
@@ -524,7 +529,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     ['form','status','admin'].forEach(t=>{
-      document.getElementById('tab-'+t).style.display = (t===btn.dataset.tab)?'block':'none';
+      document.getElementById('tab-'+t).classList.toggle('tab-hidden', t!==btn.dataset.tab);
     });
     if(btn.dataset.tab==='status') loadRequests(false);
     if(btn.dataset.tab==='admin'){ applyAdminVisibility(); if(sessionStorage.getItem('adminToken')) loadAdminData(); }
